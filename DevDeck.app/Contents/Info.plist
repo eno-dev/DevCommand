@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>             <string>DevDeck</string>
+    <key>CFBundleDisplayName</key>      <string>DevDeck</string>
+    <key>CFBundleIdentifier</key>       <string>com.eno.devdeck</string>
+    <key>CFBundleVersion</key>          <string>1</string>
+    <key>CFBundleShortVersionString</key><string>0.1.0</string>
+    <key>CFBundleExecutable</key>       <string>DevDeck</string>
+    <key>CFBundlePackageType</key>      <string>APPL</string>
+    <key>LSMinimumSystemVersion</key>   <string>14.0</string>
+    <key>LSUIElement</key>              <true/>
+    <key>NSPrincipalClass</key>         <string>NSApplication</string>
+    <key>NSHumanReadableCopyright</key> <string>DevDeck — local developer cockpit</string>
+    <key>NSAppleEventsUsageDescription</key> <string>DevDeck uses AppleScript to run your commands in Terminal or iTerm and to show or hide those windows.</string>
+</dict>
+</plist>

@@ -1,0 +1,10 @@
+.build/
+.swiftpm/
+DerivedData/
+.DS_Store
+dist/
+DevCommand.app/
+*.xcodeproj
+*.dmg
+*.zip
+.env
