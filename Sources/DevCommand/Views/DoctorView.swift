@@ -7,9 +7,9 @@ final class DoctorViewModel: ObservableObject {
 
     var issues: Int { checks.filter { $0.status != .ok }.count }
 
-    func refresh() async {
+    func refresh(fresh: Bool = false) async {
         if checks.isEmpty { isLoading = true }
-        checks = await DoctorService.runAll()
+        checks = await DoctorService.runAll(fresh: fresh)
         isLoading = false
     }
 
@@ -45,7 +45,7 @@ struct DoctorView: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
-            Button { Task { await vm.refresh() } } label: {
+            Button { Task { await vm.refresh(fresh: true) } } label: {
                 Image(systemName: "arrow.clockwise").font(.system(size: 11))
             }
             .buttonStyle(SubtleIconButtonStyle()).help("Re-check")

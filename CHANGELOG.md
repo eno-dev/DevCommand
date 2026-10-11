@@ -53,6 +53,8 @@ All notable changes to this project are documented here. The format is based on
   managers initialise — fixes `node`/`npx` not found (or wrong version) for bundled launches.
 - Bundler detection also recognises `bun` and `deno` dev servers.
 - Panels redraw only when a poll finds something new, not on every 4-second tick.
+- Doctor reuses its tool-version probe for 5 minutes, so reopening it no longer boots node and
+  ruby each time. Re-check still runs a fresh one.
 
 ### Fixed
 - Loopback-only ports (e.g. `127.0.0.1`) no longer offer an unreachable LAN URL / QR code.

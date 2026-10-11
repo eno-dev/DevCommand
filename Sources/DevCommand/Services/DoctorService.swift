@@ -7,8 +7,17 @@ enum DoctorService {
     /// Caches the (slow) DerivedData size so reopening Doctor within the TTL is instant.
     private static let derivedSizeCache = TimedValueCache<String>()
 
-    static func runAll() async -> [HealthCheck] {
-        async let probe = batchedProbe()
+    /// Caches the tool probe. Installed versions rarely change, and probing them boots node and
+    /// ruby just to print a version (about a second of CPU), which is too much for every open.
+    private static let probeCache = TimedValueCache<[String: String]>()
+
+    /// `fresh` (the Re-check button) bypasses both caches; opening the panel reuses them.
+    static func runAll(fresh: Bool = false) async -> [HealthCheck] {
+        if fresh {
+            await probeCache.clear()
+            await derivedSizeCache.clear()
+        }
+        async let probe = cachedProbe()
         async let derived = derivedData()
         async let servers = devServers()
 
@@ -23,6 +32,15 @@ enum DoctorService {
             await derived,
             await servers,
         ]
+    }
+
+    /// The probe, cached 5 min; concurrent Doctor refreshes coalesce onto a single login shell.
+    private static func cachedProbe() async -> [String: String] {
+        let fields = await probeCache.value(ttl: 300) { await batchedProbe() } ?? [:]
+        // Don't hold on to a result with something missing: the user may be installing it right
+        // now, and the next open should notice.
+        if fields.isEmpty || fields.values.contains(where: \.isEmpty) { await probeCache.clear() }
+        return fields
     }
 
     /// One login shell probes every tool, line-tagged `key:value`, instead of 6 separate spawns.
