@@ -104,6 +104,14 @@ enum Shell {
     /// GUI apps don't inherit a login shell's PATH.
     static let extraPATH = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
+    /// The app's own environment with `extraPATH` appended. It can't change while we run, so it's
+    /// built once instead of being re-read from `environ` on every spawn (several per poll cycle).
+    private static let baseEnvironment: [String: String] = {
+        var env = ProcessInfo.processInfo.environment
+        env["PATH"] = env["PATH"].map { "\($0):\(extraPATH)" } ?? extraPATH
+        return env
+    }()
+
     @discardableResult
     static func run(_ executable: String,
                     _ arguments: [String] = [],
@@ -116,10 +124,9 @@ enum Shell {
             process.arguments = arguments
             if let cwd { process.currentDirectoryURL = URL(fileURLWithPath: cwd) }
 
-            var env = ProcessInfo.processInfo.environment
-            env["PATH"] = env["PATH"].map { "\($0):\(extraPATH)" } ?? extraPATH
-            for (key, value) in extraEnv { env[key] = value }
-            process.environment = env
+            process.environment = extraEnv.isEmpty
+                ? baseEnvironment
+                : baseEnvironment.merging(extraEnv) { _, new in new }
 
             let outPipe = Pipe()
             let errPipe = Pipe()
