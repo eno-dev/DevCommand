@@ -55,6 +55,8 @@ All notable changes to this project are documented here. The format is based on
 - Panels redraw only when a poll finds something new, not on every 4-second tick.
 - Doctor reuses its tool-version probe for 5 minutes, so reopening it no longer boots node and
   ruby each time. Re-check still runs a fresh one.
+- Release builds are stripped of local symbols, taking the executable from about 3 MB to about
+  1 MB.
 
 ### Fixed
 - Loopback-only ports (e.g. `127.0.0.1`) no longer offer an unreachable LAN URL / QR code.

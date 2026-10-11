@@ -20,6 +20,9 @@ echo "▶ Assembling $APP ($VERSION build $BUILD)…"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/DevCommand"
+# Release builds ship without local symbols, which takes the executable from ~3 MB to ~1 MB.
+# This has to happen before signing: stripping afterwards would invalidate the signature.
+[[ "$CONFIG" == "release" ]] && strip -x "$APP/Contents/MacOS/DevCommand"
 printf 'APPL????' > "$APP/Contents/PkgInfo"
 
 cat > "$APP/Contents/Info.plist" <<'PLIST'
