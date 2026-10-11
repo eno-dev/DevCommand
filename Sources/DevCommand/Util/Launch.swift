@@ -79,10 +79,12 @@ enum Launch {
     /// Universal fallback: write the command to a throwaway executable `.command` and open it in the
     /// chosen terminal. `-l` = login shell so version managers initialise. We strip the quarantine
     /// flag so a downloaded build doesn't stack Gatekeeper's prompt on top of the terminal's.
+    /// The script deletes itself as its first step (the shell already has it open), so these
+    /// don't pile up in the temp folder.
     private static func runViaCommandFile(_ line: String) async {
         let file = (NSTemporaryDirectory() as NSString)
             .appendingPathComponent("devcommand-\(UUID().uuidString).command")
-        let script = "#!/bin/zsh -l\n\(line)\n"
+        let script = "#!/bin/zsh -l\nrm -f -- \"$0\"\n\(line)\n"
         do {
             try script.write(toFile: file, atomically: true, encoding: .utf8)
             try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: file)

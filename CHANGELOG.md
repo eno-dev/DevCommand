@@ -62,6 +62,8 @@ All notable changes to this project are documented here. The format is based on
 - The Settings version now reads from the app bundle instead of a hard-coded string.
 - A subprocess that fails to launch no longer leaks its pipe descriptors (each failure used to
   hold two open for good).
+- The fallback `.command` launcher deletes itself once it starts instead of piling up in the temp
+  folder.
 
 ## [0.1.0] - 2026-06-11
 
