@@ -43,7 +43,8 @@ enum PortService {
 
         return byKey.values.sorted { lhs, rhs in
             if lhs.isDev != rhs.isDev { return lhs.isDev }   // dev ports first
-            return lhs.port < rhs.port
+            if lhs.port != rhs.port { return lhs.port < rhs.port }
+            return lhs.pid < rhs.pid   // stable order when two processes share a port
         }
     }
 

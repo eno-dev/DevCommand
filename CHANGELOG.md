@@ -52,6 +52,7 @@ All notable changes to this project are documented here. The format is based on
 - Launched Terminal commands run under a **login shell** (`#!/bin/zsh -l`) so Node version
   managers initialise — fixes `node`/`npx` not found (or wrong version) for bundled launches.
 - Bundler detection also recognises `bun` and `deno` dev servers.
+- Panels redraw only when a poll finds something new, not on every 4-second tick.
 
 ### Fixed
 - Loopback-only ports (e.g. `127.0.0.1`) no longer offer an unreachable LAN URL / QR code.

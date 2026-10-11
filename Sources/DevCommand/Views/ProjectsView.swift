@@ -39,13 +39,15 @@ final class ProjectsViewModel: ObservableObject {
     }
 
     /// Light refresh of just the running-server state — reuses the cached project list,
-    /// so it can poll without re-hitting the filesystem.
+    /// so it can poll without re-hitting the filesystem. Publishes only what changed, so a poll
+    /// that finds nothing new doesn't re-render every row.
     func updateRunning() async {
-        lanIP = NetworkService.primaryLocalIP()
+        let ip = NetworkService.primaryLocalIP()
+        if ip != lanIP { lanIP = ip }
         let servers = await BundlerService.active()
         let (matched, orphans) = ProjectService.matchServers(servers, to: projects)
-        running = matched
-        orphanServers = orphans
+        if matched != running { running = matched }
+        if orphans != orphanServers { orphanServers = orphans }
     }
 
     // MARK: Ordering & favorites

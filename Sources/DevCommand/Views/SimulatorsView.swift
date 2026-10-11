@@ -22,11 +22,18 @@ final class SimulatorsViewModel: ObservableObject {
         async let sims = SimulatorService.list()
         async let devs = DeviceService.list()
         async let scanned = ProjectService.scan(roots: Preferences.devRoots)
-        groups = await sims
-        devices = await devs
-        projects = (await scanned).filter { $0.hasIOS }
+        publish(groups: await sims, devices: await devs)
+        let runnable = (await scanned).filter { $0.hasIOS }
+        if runnable != projects { projects = runnable }
         await detectActive()
-        isLoading = false
+        if isLoading { isLoading = false }
+    }
+
+    /// Assign only what changed: `@Published` fires on every set, even an identical one, so an
+    /// unconditional assign would re-render every row on each 4s poll.
+    private func publish(groups latest: [SimRuntimeGroup], devices latestDevices: [PhysicalDevice]? = nil) {
+        if latest != groups { groups = latest }
+        if let latestDevices, latestDevices != devices { devices = latestDevices }
     }
 
     /// Lightweight live poll: sim states + running-app detection, reusing the cached project scan.
@@ -36,10 +43,9 @@ final class SimulatorsViewModel: ObservableObject {
         if includeDevices {
             async let sims = SimulatorService.list()
             async let devs = DeviceService.list()
-            groups = await sims
-            devices = await devs
+            publish(groups: await sims, devices: await devs)
         } else {
-            groups = await SimulatorService.list()
+            publish(groups: await SimulatorService.list())
         }
         await detectActive()
     }
@@ -62,7 +68,7 @@ final class SimulatorsViewModel: ObservableObject {
                 if let hit { foundProjects[udid] = hit.project; foundIDs[udid] = hit.bundleID }
             }
         }
-        activeProjects = foundProjects
+        if foundProjects != activeProjects { activeProjects = foundProjects }
         activeBundleID = foundIDs
     }
 

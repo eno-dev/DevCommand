@@ -13,11 +13,15 @@ final class PortsViewModel: ObservableObject {
         hideSystem ? ports.filter { !$0.isSystem && !$0.isAppHelper } : ports
     }
 
+    /// Publishes only what actually changed: `@Published` fires on every set, even an identical
+    /// one, so an unconditional assign would re-render the whole list on each 4s poll.
     func refresh() async {
         if ports.isEmpty { isLoading = true }
-        lanIP = NetworkService.primaryLocalIP()
-        ports = await PortService.listening()
-        isLoading = false
+        let ip = NetworkService.primaryLocalIP()
+        if ip != lanIP { lanIP = ip }
+        let latest = await PortService.listening()
+        if latest != ports { ports = latest }
+        if isLoading { isLoading = false }
     }
 
     func kill(_ port: ListeningPort, force: Bool) async {

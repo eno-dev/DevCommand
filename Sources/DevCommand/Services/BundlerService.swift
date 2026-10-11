@@ -23,7 +23,7 @@ enum BundlerService {
             let name = dir.isEmpty ? "node" : (dir as NSString).lastPathComponent
             return ActiveBundler(pid: pid, port: port, cwd: dir, projectName: name)
         }
-        return result.sorted { $0.port < $1.port }
+        return result.sorted { ($0.port, $0.pid) < ($1.port, $1.pid) }
     }
 
     /// Resolve several processes' working directories in a single `lsof` call.
