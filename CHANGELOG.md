@@ -57,6 +57,8 @@ All notable changes to this project are documented here. The format is based on
 - Loopback-only ports (e.g. `127.0.0.1`) no longer offer an unreachable LAN URL / QR code.
 - Base64 decoder now accepts URL-safe and unpadded input.
 - The Settings version now reads from the app bundle instead of a hard-coded string.
+- A subprocess that fails to launch no longer leaks its pipe descriptors (each failure used to
+  hold two open for good).
 
 ## [0.1.0] - 2026-06-11
 

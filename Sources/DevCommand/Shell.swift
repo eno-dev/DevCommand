@@ -164,6 +164,9 @@ enum Shell {
             do {
                 try process.run()
             } catch {
+                // A Process that never launches never releases its terminationHandler, which would
+                // pin `run` (and through it both pipe read ends) for good. Drop it by hand.
+                process.terminationHandler = nil
                 run.failLaunch("Failed to launch \(executable): \(error.localizedDescription)")
                 return
             }

@@ -19,6 +19,19 @@ final class ShellTests: XCTestCase {
         XCTAssertEqual(result.exitCode, -1)
     }
 
+    /// A launch that fails must give its pipes back. It used to leak both read ends every time,
+    /// which is how a transient spawn failure could snowball into running out of descriptors.
+    func testFailedLaunchDoesNotLeakFileDescriptors() async throws {
+        func openDescriptors() -> Int {
+            (try? FileManager.default.contentsOfDirectory(atPath: "/dev/fd").count) ?? 0
+        }
+        _ = await Shell.run("/definitely/not/a/binary")   // warm up one-time allocations
+        let before = openDescriptors()
+        for _ in 0..<50 { _ = await Shell.run("/definitely/not/a/binary") }
+        try await Task.sleep(for: .milliseconds(500))      // let the cancelled watchdogs release
+        XCTAssertLessThanOrEqual(openDescriptors(), before + 4)
+    }
+
     /// The core fix: a long-running command must be terminated at the timeout, not hang and
     /// hold threads forever (which previously spun the app to 100% CPU over time).
     func testTimeoutTerminatesHungProcess() async {
