@@ -13,6 +13,7 @@ All notable changes to this project are documented here. The format is based on
 
 ### Changed
 - DevCommand reopens on the panel you used last, and the Ports "Hide system" choice sticks.
+- The Projects list rescans by itself when you add or remove a dev folder in Settings.
 
 ### Fixed
 - Simulators no longer show up under "Physical Devices" (newer Xcode versions report them

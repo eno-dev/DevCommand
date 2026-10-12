@@ -12,31 +12,32 @@ final class ProjectsViewModel: ObservableObject {
     @Published var mismatch: RunMismatch?   // platform-mismatch dialog (full message + 1-click fix)
 
     var devRoots: [String] { SettingsStore.shared.devRoots }
-    private var hasScanned = false
+    /// The folders the current list was scanned from; nil until the first scan finishes.
+    private var scannedRoots: [String]?
 
     func refresh() async {
-        projects = await ProjectService.scan(roots: SettingsStore.shared.devRoots)
-        hasScanned = true
+        let roots = SettingsStore.shared.devRoots
+        projects = await ProjectService.scan(roots: roots)
+        scannedRoots = roots
         await updateRunning()
         isLoading = false
     }
 
-    /// Poller entry point: scan the disk only on first open; reopens just refresh running state.
+    /// Poller entry point: scan the disk on first open, or when the dev folders changed since
+    /// the last scan; any other reopen just refreshes running servers.
     func resume() async {
-        if hasScanned { await updateRunning() } else { await refresh() }
+        guard scannedRoots == SettingsStore.shared.devRoots else { return await refresh() }
+        await updateRunning()
     }
 
-    func addRoot(_ path: String) async {
-        SettingsStore.shared.addRoot(path)
+    /// Rescan when the dev folders are edited (here or in Settings) while the panel exists.
+    func rootsChanged() async {
+        guard scannedRoots != SettingsStore.shared.devRoots else { return }
         isLoading = true
         await refresh()
     }
 
-    func removeRoot(_ path: String) async {
-        SettingsStore.shared.removeRoot(path)
-        isLoading = true
-        await refresh()
-    }
+    func addRoot(_ path: String) { SettingsStore.shared.addRoot(path) }   // the view's onChange rescans
 
     /// Light refresh of just the running-server state — reuses the cached project list,
     /// so it can poll without re-hitting the filesystem. Publishes only what changed, so a poll
@@ -206,6 +207,8 @@ struct ProjectsView: View {
             if state == .inactive { stopPolling() } else { startPolling() }
         }
         .onDisappear { stopPolling() }
+        // Dev folders edited (here or in Settings): rescan instead of waiting for a manual Rescan.
+        .onChange(of: settings.devRoots) { _, _ in Task { await vm.rootsChanged() } }
     }
 
     private func startPolling() {
@@ -312,8 +315,7 @@ struct ProjectsView: View {
         panel.directoryURL = URL(fileURLWithPath: vm.devRoots.first ?? NSHomeDirectory())
         panel.prompt = "Add Folder"
         if panel.runModal() == .OK {
-            let paths = panel.urls.map(\.path)
-            Task { for path in paths { await vm.addRoot(path) } }
+            for url in panel.urls { vm.addRoot(url.path) }
         }
     }
 }
