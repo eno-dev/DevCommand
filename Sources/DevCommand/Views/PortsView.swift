@@ -10,6 +10,7 @@ final class PortsViewModel: ObservableObject {
     }
     @Published var lanIP: String?
     @Published var banner: String?
+    @Published var copied: String?               // what was just copied, for the confirmation toast
 
     var visible: [ListeningPort] {
         hideSystem ? ports.filter { !$0.isSystem && !$0.isAppHelper } : ports
@@ -53,6 +54,11 @@ final class PortsViewModel: ObservableObject {
     func copy(_ string: String) {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(string, forType: .string)
+        copied = string
+        Task {
+            try? await Task.sleep(nanoseconds: 1_200_000_000)
+            if copied == string { copied = nil }
+        }
     }
 
     func openInBrowser(_ urlString: String) {
@@ -80,6 +86,7 @@ struct PortsView: View {
             }
             content
         }
+        .overlay(alignment: .bottom) { Toast(text: vm.copied.map { "Copied \($0)" }) }
         // Poll only while the panel is visible, and never overlap: each cycle awaits the
         // previous refresh before sleeping, so a slow lsof can't stack up tasks.
         .task { startPolling() }

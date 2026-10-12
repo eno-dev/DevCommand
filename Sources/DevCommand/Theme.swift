@@ -167,6 +167,32 @@ struct FilterField: View {
     }
 }
 
+/// Brief confirmation that floats over the bottom of a panel (after a copy, say) and fades out.
+/// Pass nil to hide it.
+struct Toast: View {
+    let text: String?
+
+    var body: some View {
+        ZStack {
+            if let text {
+                HStack(spacing: Theme.s6) {
+                    Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                    Text(verbatim: text).lineLimit(1).truncationMode(.middle)
+                }
+                .font(.caption)
+                .padding(.horizontal, Theme.s12).padding(.vertical, Theme.s6)
+                .background(.regularMaterial, in: Capsule())
+                .overlay(Capsule().strokeBorder(Theme.hairline, lineWidth: 1))
+                .shadow(color: .black.opacity(0.18), radius: 6, y: 2)
+                .padding(.horizontal, Theme.gutter).padding(.bottom, Theme.s12)
+                .transition(.opacity.combined(with: .move(edge: .bottom)))
+            }
+        }
+        .animation(.easeOut(duration: 0.15), value: text)
+        .allowsHitTesting(false)
+    }
+}
+
 extension View {
     /// Presents a platform-mismatch as a dialog showing the full message (no truncation),
     /// with a one-click in-app fix when a corrective command exists. `onFix`/`onCopy` fire
