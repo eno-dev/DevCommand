@@ -23,15 +23,18 @@ one click away — and stays out of your way the rest of the time.
 
 ## What you can do
 
-- **Ports** — see what's listening, kill a stuck port, or open/copy its URL.
-- **Sims** — boot any iOS or tvOS simulator and run a project on it.
-- **Projects** — your dev folder at a glance: start/stop each dev server inline (Metro / Expo /
-  npm / yarn / pnpm / bun) with a live `:port` badge, run any `package.json` script, install deps,
-  clean build caches, Prebuild, `pod install`, or open in Xcode / your editor / Terminal.
+- **Ports** — see what's listening and which project owns it, kill a stuck port, or open/copy its URL.
+- **Sims** — boot any iOS or tvOS simulator and run a project on it, open a deep link, flip dark
+  mode, copy its UDID, or erase it.
+- **Projects** — your dev folder at a glance, with each project's git branch: start/stop/restart
+  each dev server inline (Metro / Expo / npm / yarn / pnpm / bun) with a live `:port` badge, run any
+  `package.json` script, install deps, clean build caches, Prebuild, `pod install`, or open in
+  Xcode / your editor / Terminal / GitHub.
 - **Doctor** — environment health checks, plus a **Shell** card showing which Node and version
   manager (nvm / fnm / volta / mise / asdf) your launched commands will actually use, with quick
   access to edit `~/.zshrc`.
-- **Tools** — UUID, Unix timestamp, secret token, Base64, JWT decode, plus one-tap cleanups
+- **Tools** — UUID, Unix timestamp (now, or convert one to a date), secret token, Base64, URL
+  encode, SHA-256, JSON format, JWT decode, plus one-tap cleanups
   (clear DerivedData, reset Watchman, clean npm cache, kill node).
 - **Always visible** — your LAN IP (click to copy), an optional public IP you reveal with a tap, and a
   QR button to open a dev server on your phone (an Expo/Browser toggle opens it straight in the Expo dev client).
@@ -52,15 +55,19 @@ Then look for the box icon in your menu bar. Done.
 
 ## Updating & uninstalling
 
-- **Update** — **Settings → Check for Updates** pulls the latest and rebuilds in place
+- **Update** — **Settings → Check for Updates** asks GitHub for the latest release and offers it:
+  source installs pull and rebuild in place, downloaded builds get the new dmg
   (or run `zsh scripts/update.sh`).
 - **Uninstall** — **Settings → Uninstall DevCommand** moves the app to the Trash and clears its
   preferences and login item (or run `zsh scripts/uninstall.sh`).
 
 ## Using it
 
-- **Open it** — click the menu-bar icon.
-- **Switch panels** — the tabs across the top (Ports, Sims, Projects, Tools, Doctor).
+- **Open it** — click the menu-bar icon, or record a global shortcut in Settings to open it from
+  any app. Esc closes it.
+- **Switch panels** — the tabs across the top (Ports, Sims, Projects, Tools, Doctor), or ⌘1 to ⌘5.
+  ⌘R refreshes the panel you are on, and in Ports and Projects you can just start typing to
+  filter the list.
 - **Projects** — star a project to pin it to the top; running ones sort first, then alphabetical.
   Drag favorites to reorder.
 - **Settings** — the gear icon (top right). Turn panels or tools on/off, manage your projects

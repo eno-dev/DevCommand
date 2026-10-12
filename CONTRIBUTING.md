@@ -29,9 +29,9 @@ Sources/DevCommand/
   Theme.swift           design tokens + reusable components
   Shell.swift           Process wrapper everything shells out through
   Models/               Port, Simulator, DevProject, Bundler, DevTool, HealthCheck, PackageManager, PhysicalDevice
-  Services/             PortService, SimulatorService, ProjectService, BundlerService, DeviceService, DoctorService, ShellEnvService, ToolsService, NetworkService
+  Services/             PortService, SimulatorService, ProjectService, BundlerService, DeviceService, DoctorService, ShellEnvService, ToolsService, NetworkService, GitService, UpdateService
   Views/                one file per panel + RootView, NetworkBar, SettingsView, QRCodeView
-  Util/                 Launch (terminal/open), LoginItem (launch-at-login), EditorApps / TerminalApps / InstalledApps (app discovery)
+  Util/                 Launch (terminal/open), LoginItem (launch-at-login), GlobalHotKey (global shortcut), MenuBarPopover (open/close the popover), EditorApps / TerminalApps / InstalledApps (app discovery)
 ```
 
 ## Conventions
