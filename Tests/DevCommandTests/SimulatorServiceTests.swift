@@ -44,4 +44,11 @@ final class SimulatorServiceTests: XCTestCase {
     func testEmptyOnGarbage() {
         XCTAssertTrue(SimulatorService.parse("not json").isEmpty)
     }
+
+    func testNextAppearanceFlipsBetweenLightAndDark() {
+        XCTAssertEqual(SimulatorService.nextAppearance(after: "light\n"), "dark")
+        XCTAssertEqual(SimulatorService.nextAppearance(after: "dark\n"), "light")
+        XCTAssertEqual(SimulatorService.nextAppearance(after: "Dark"), "light")
+        XCTAssertEqual(SimulatorService.nextAppearance(after: "unknown"), "dark")   // anything else counts as light
+    }
 }

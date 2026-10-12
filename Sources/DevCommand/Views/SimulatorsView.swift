@@ -1,6 +1,13 @@
 import SwiftUI
 import AppKit
 
+/// The less-frequent things a simulator row can do, sent up to the view model as one value so
+/// the row doesn't need a closure per action.
+enum SimAction {
+    case copyUDID, toggleAppearance, erase
+    case openURL(String)
+}
+
 @MainActor
 final class SimulatorsViewModel: ObservableObject {
     @Published var groups: [SimRuntimeGroup] = []
@@ -11,6 +18,7 @@ final class SimulatorsViewModel: ObservableObject {
     @Published var busyUDID: String?
     @Published var banner: String?
     @Published var mismatch: RunMismatch?   // platform-mismatch dialog (full message + 1-click fix)
+    @Published var copied: String?          // what was just copied, for the confirmation toast
 
     private var activeBundleID: [String: String] = [:]  // udid -> the running app's bundle id (for reload)
 
@@ -95,6 +103,41 @@ final class SimulatorsViewModel: ObservableObject {
             try? await Task.sleep(nanoseconds: 6_000_000_000)
             if banner == message { banner = nil }
         }
+    }
+
+    func perform(_ action: SimAction, on sim: Simulator) async {
+        switch action {
+        case .copyUDID:
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(sim.udid, forType: .string)
+            let note = "Copied UDID of \(sim.name)"
+            copied = note
+            try? await Task.sleep(nanoseconds: 1_200_000_000)
+            if copied == note { copied = nil }
+        case .toggleAppearance:
+            let result = await SimulatorService.toggleAppearance(sim.udid)
+            if !result.ok { report("Couldn't switch appearance on \(sim.name): \(result.briefError)") }
+        case .openURL(let url):
+            let result = await SimulatorService.openURL(url, on: sim.udid)
+            if !result.ok { report("Couldn't open that URL on \(sim.name): \(result.briefError)") }
+        case .erase:
+            await erase(sim)
+        }
+    }
+
+    /// Erase all content and settings. `simctl erase` refuses a booted device, so shut it down first.
+    private func erase(_ sim: Simulator) async {
+        busyUDID = sim.udid
+        defer { busyUDID = nil }
+        if sim.isBooted {
+            let stopped = await SimulatorService.shutdown(sim.udid)
+            guard stopped.ok else {
+                return report("Couldn't shut down \(sim.name) to erase it: \(stopped.briefError)")
+            }
+        }
+        let result = await SimulatorService.erase(sim.udid)
+        if !result.ok { report("Couldn't erase \(sim.name): \(result.briefError)") }
+        await refresh()
     }
 
     func run(project: DevProject, on sim: Simulator) async {
@@ -182,6 +225,7 @@ struct SimulatorsView: View {
             }
             content
         }
+        .overlay(alignment: .bottom) { Toast(text: vm.copied) }
         .runMismatchAlert($vm.mismatch,
                           onFix: { m in Task { await vm.applyFix(m) } },
                           onCopy: { vm.copyFix($0) })
@@ -268,7 +312,8 @@ struct SimulatorsView: View {
                                    onShutdown: { Task { await vm.shutdown(sim) } },
                                    onRun: { project in Task { await vm.run(project: project, on: sim) } },
                                    onReload: { Task { await vm.reload(sim) } },
-                                   onReloadClearCache: { Task { await vm.reloadClearCache(sim) } })
+                                   onReloadClearCache: { Task { await vm.reloadClearCache(sim) } },
+                                   onAction: { action in Task { await vm.perform(action, on: sim) } })
                             Divider()
                         }
                     }
@@ -288,7 +333,10 @@ private struct SimRow: View {
     let onRun: (DevProject) -> Void
     let onReload: () -> Void
     let onReloadClearCache: () -> Void
+    let onAction: (SimAction) -> Void
     @State private var hovering = false
+    @State private var showingURL = false
+    @State private var confirmingErase = false
 
     private var subtitle: String {
         if let active = activeProject { return "Running \(active.name)" }
@@ -331,6 +379,7 @@ private struct SimRow: View {
                     if sim.isBooted { onShutdown() } else { onBoot() }
                 }
                 .controlSize(.small)
+                moreMenu
             }
         }
         .rowInsets()
@@ -338,6 +387,67 @@ private struct SimRow: View {
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
         .animation(.easeOut(duration: 0.12), value: hovering)
+    }
+
+    /// Copy UDID, plus the things only a booted simulator can do, plus erase.
+    private var moreMenu: some View {
+        Menu {
+            Button("Copy UDID") { onAction(.copyUDID) }
+            if sim.isBooted {
+                Button("Open URL…") { showingURL = true }
+                Button("Toggle Dark Mode") { onAction(.toggleAppearance) }
+            }
+            Divider()
+            Button("Erase All Content and Settings…", role: .destructive) { confirmingErase = true }
+        } label: {
+            Image(systemName: "ellipsis.circle").font(.system(size: 15)).foregroundStyle(.secondary)
+        }
+        .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+        .help("Simulator actions")
+        .popover(isPresented: $showingURL, arrowEdge: .bottom) {
+            OpenURLPopover(simName: sim.name, isPresented: $showingURL) { onAction(.openURL($0)) }
+        }
+        .confirmationDialog("Erase “\(sim.name)”?", isPresented: $confirmingErase) {
+            Button("Erase", role: .destructive) { onAction(.erase) }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This removes every app and all data on this simulator. It can't be undone.")
+        }
+    }
+}
+
+/// Asks for a URL to open on a booted simulator: a web page, or an app deep link like
+/// `myapp://settings`. Remembers the last one, since deep links get retyped a lot.
+private struct OpenURLPopover: View {
+    let simName: String
+    @Binding var isPresented: Bool
+    let onOpen: (String) -> Void
+    @State private var url = Preferences.lastSimulatorURL
+
+    private var trimmed: String { url.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.s8) {
+            Text("Open a URL on \(simName)").font(.caption).foregroundStyle(.secondary)
+            HStack(spacing: Theme.s6) {
+                TextField("myapp://path or https://…", text: $url)
+                    .textFieldStyle(.roundedBorder)
+                    .font(Theme.mono(11))
+                    .onSubmit(open)
+                Button("Open", action: open)
+                    .controlSize(.small)
+                    .disabled(trimmed.isEmpty)
+            }
+        }
+        .padding(Theme.s12)
+        .frame(width: 300)
+    }
+
+    private func open() {
+        guard !trimmed.isEmpty else { return }
+        Preferences.lastSimulatorURL = trimmed
+        onOpen(trimmed)
+        isPresented = false
     }
 }
 

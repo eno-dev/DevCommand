@@ -72,6 +72,33 @@ enum SimulatorService {
         await Shell.run("/usr/bin/xcrun", ["simctl", "shutdown", udid])
     }
 
+    /// Wipe a simulator back to factory state. `simctl erase` refuses a booted device, so the
+    /// caller shuts it down first.
+    @discardableResult
+    static func erase(_ udid: String) async -> ShellResult {
+        await Shell.run("/usr/bin/xcrun", ["simctl", "erase", udid])
+    }
+
+    /// Open a URL (a web page or an app deep link) on a booted simulator.
+    @discardableResult
+    static func openURL(_ url: String, on udid: String) async -> ShellResult {
+        await Shell.run("/usr/bin/xcrun", ["simctl", "openurl", udid, url])
+    }
+
+    /// Flip a booted simulator between light and dark appearance.
+    @discardableResult
+    static func toggleAppearance(_ udid: String) async -> ShellResult {
+        let current = await Shell.run("/usr/bin/xcrun", ["simctl", "ui", udid, "appearance"])
+        guard current.ok else { return current }
+        return await Shell.run("/usr/bin/xcrun",
+                               ["simctl", "ui", udid, "appearance", nextAppearance(after: current.stdout)])
+    }
+
+    /// `simctl ui … appearance` prints "light" or "dark"; anything else counts as light.
+    static func nextAppearance(after current: String) -> String {
+        current.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "dark" ? "light" : "dark"
+    }
+
     static func openSimulatorApp() async {
         _ = await Shell.run("/usr/bin/open", ["-a", "Simulator"])
     }

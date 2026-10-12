@@ -11,6 +11,7 @@ enum Preferences {
     private static let sourceRepoKey = "sourceRepo"
     private static let lastSectionKey = "lastSection"
     private static let hideSystemPortsKey = "hideSystemPorts"
+    private static let lastSimulatorURLKey = "lastSimulatorURL"
 
     /// Folders scanned for projects (default: [~/Dev]). Order preserved, duplicates dropped.
     static var devRoots: [String] {
@@ -68,6 +69,12 @@ enum Preferences {
     static var hideSystemPorts: Bool {
         get { UserDefaults.standard.object(forKey: hideSystemPortsKey) as? Bool ?? true }
         set { UserDefaults.standard.set(newValue, forKey: hideSystemPortsKey) }
+    }
+
+    /// The last URL opened on a simulator, offered again next time (deep links get retyped a lot).
+    static var lastSimulatorURL: String {
+        get { UserDefaults.standard.string(forKey: lastSimulatorURLKey) ?? "" }
+        set { UserDefaults.standard.set(newValue, forKey: lastSimulatorURLKey) }
     }
 
     /// Absolute path of the source checkout DevCommand was built from — written by `install.sh`
