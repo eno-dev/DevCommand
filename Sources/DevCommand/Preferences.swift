@@ -11,6 +11,7 @@ enum Preferences {
     private static let sourceRepoKey = "sourceRepo"
     private static let lastSectionKey = "lastSection"
     private static let hideSystemPortsKey = "hideSystemPorts"
+    private static let hotKeyKey = "globalHotKey"
     private static let lastSimulatorURLKey = "lastSimulatorURL"
 
     /// Folders scanned for projects (default: [~/Dev]). Order preserved, duplicates dropped.
@@ -69,6 +70,23 @@ enum Preferences {
     static var hideSystemPorts: Bool {
         get { UserDefaults.standard.object(forKey: hideSystemPortsKey) as? Bool ?? true }
         set { UserDefaults.standard.set(newValue, forKey: hideSystemPortsKey) }
+    }
+
+    /// The global shortcut that opens the popover from any app. nil (the default) means none.
+    static var hotKey: HotKey? {
+        get {
+            guard let stored = UserDefaults.standard.dictionary(forKey: hotKeyKey),
+                  let keyCode = stored["keyCode"] as? Int,
+                  let modifiers = stored["modifiers"] as? Int,
+                  let display = stored["display"] as? String else { return nil }
+            return HotKey(keyCode: UInt32(keyCode), modifiers: UInt32(modifiers), display: display)
+        }
+        set {
+            guard let newValue else { return UserDefaults.standard.removeObject(forKey: hotKeyKey) }
+            UserDefaults.standard.set(["keyCode": Int(newValue.keyCode),
+                                       "modifiers": Int(newValue.modifiers),
+                                       "display": newValue.display], forKey: hotKeyKey)
+        }
     }
 
     /// The last URL opened on a simulator, offered again next time (deep links get retyped a lot).

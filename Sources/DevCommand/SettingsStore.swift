@@ -32,6 +32,15 @@ final class SettingsStore: ObservableObject {
     @Published var showPublicIP: Bool {
         didSet { Preferences.showPublicIP = showPublicIP }
     }
+    /// The global shortcut that opens the popover. Setting it re-registers with the system;
+    /// `hotKeyRejected` reports when the system wouldn't take the combination.
+    @Published var hotKey: HotKey? {
+        didSet {
+            Preferences.hotKey = hotKey
+            hotKeyRejected = !GlobalHotKey.shared.apply(hotKey)
+        }
+    }
+    @Published private(set) var hotKeyRejected = false
 
     private let defaults = UserDefaults.standard
     private enum Keys {
@@ -53,6 +62,7 @@ final class SettingsStore: ObservableObject {
         editorApp = Preferences.editorApp
         terminalApp = Preferences.terminalApp
         showPublicIP = Preferences.showPublicIP
+        hotKey = Preferences.hotKey   // already registered at launch; observers don't fire in init
 
         // Panels/tools added in a later version appear enabled by default.
         enabledSections.formUnion(allSections.filter { !sectionOrder.contains($0) })

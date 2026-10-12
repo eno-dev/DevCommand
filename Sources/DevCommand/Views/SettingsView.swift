@@ -98,6 +98,17 @@ private struct GeneralSettings: View {
                         launchAtLogin = LoginItem.isEnabled
                     }
             }
+            Section("Global shortcut") {
+                LabeledContent("Open DevCommand") { ShortcutRecorder() }
+                if settings.hotKeyRejected {
+                    Text("macOS wouldn't register that shortcut. Another app may own it, so try a different one.")
+                        .font(.caption).foregroundStyle(.orange)
+                } else {
+                    Text("Opens (or closes) DevCommand from any app. Click, then press the keys you want; "
+                       + "include ⌃ or ⌥ so it can't collide with an everyday shortcut.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
             Section("Privacy") {
                 Toggle("Show public IP", isOn: $settings.showPublicIP)
                 Text("Off by default: DevCommand makes no outbound request until you ask. Leave it off "
@@ -181,6 +192,50 @@ private struct GeneralSettings: View {
         if panel.runModal() == .OK {
             for url in panel.urls { settings.addRoot(url.path) }
         }
+    }
+}
+
+/// Sets the global shortcut: click, then press the combination. One key press always ends the
+/// recording (Esc, or a combination without ⌃ or ⌥, just cancels), and ✕ removes the shortcut.
+private struct ShortcutRecorder: View {
+    @ObservedObject private var settings = SettingsStore.shared
+    @State private var recording = false
+    @State private var monitor: Any?
+
+    var body: some View {
+        HStack(spacing: Theme.s6) {
+            Button(recording ? "Press shortcut…" : (settings.hotKey?.display ?? "Record Shortcut")) {
+                if recording { stop() } else { start() }
+            }
+            if settings.hotKey != nil, !recording {
+                Button { settings.hotKey = nil } label: {
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+                }
+                .buttonStyle(.borderless)
+                .help("Remove the shortcut")
+            }
+        }
+        .onDisappear(perform: stop)
+    }
+
+    private func start() {
+        recording = true
+        monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            // The first key press ends the recording whatever it is, so the monitor can never
+            // outlive it and keep swallowing keys.
+            if let hotKey = HotKey(keyCode: event.keyCode, flags: event.modifierFlags,
+                                   characters: event.charactersIgnoringModifiers) {
+                settings.hotKey = hotKey
+            }
+            stop()
+            return nil
+        }
+    }
+
+    private func stop() {
+        if let monitor { NSEvent.removeMonitor(monitor) }
+        monitor = nil
+        recording = false
     }
 }
 
