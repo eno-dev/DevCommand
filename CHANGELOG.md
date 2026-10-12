@@ -21,6 +21,8 @@ All notable changes to this project are documented here. The format is based on
   PHP and Java servers.
 - **More tools**: URL encode / decode, SHA-256, JSON pretty-print, and a converter that turns a
   pasted Unix timestamp into a date.
+- **A real update check**: "Check for Updates" asks GitHub for the latest release (one request,
+  only when you click) and tells you whether you are current.
 - Copying from the Ports menu confirms with a brief toast.
 
 ### Changed

@@ -75,6 +75,12 @@ private struct GeneralSettings: View {
     @ObservedObject private var settings = SettingsStore.shared
     @State private var launchAtLogin = LoginItem.isEnabled
     @State private var confirmingUninstall = false
+    @State private var update: UpdateState = .idle
+
+    private enum UpdateState: Equatable {
+        case idle, checking
+        case done(UpdateService.Outcome)
+    }
 
     /// Read from the bundle's Info.plist so it can't drift from the actual build.
     /// Falls back to "dev" when run via `swift run` (no bundle).
@@ -144,7 +150,12 @@ private struct GeneralSettings: View {
             }
             Section("About") {
                 LabeledContent("Version", value: Self.appVersion)
-                Button("Check for Updates…") { update() }
+                HStack(spacing: Theme.s8) {
+                    Button("Check for Updates…") { checkForUpdates() }
+                        .disabled(update == .checking)
+                    Spacer()
+                    updateStatus
+                }
                 Button("Uninstall DevCommand…", role: .destructive) { confirmingUninstall = true }
                 Text("A light, native menu-bar cockpit for React / React Native / web / backend / iOS / tvOS.")
                     .font(.caption).foregroundStyle(.secondary)
@@ -160,15 +171,53 @@ private struct GeneralSettings: View {
         }
     }
 
+    /// What the last update check found, with the one action that follows from it.
+    @ViewBuilder
+    private var updateStatus: some View {
+        switch update {
+        case .idle:
+            EmptyView()
+        case .checking:
+            ProgressView().controlSize(.small)
+        case .done(.upToDate):
+            Label("You're up to date", systemImage: "checkmark.circle.fill")
+                .font(.caption).foregroundStyle(.green)
+            if sourceRepo != nil {
+                Button("Pull & Rebuild") { installUpdate() }.controlSize(.small)
+                    .help("Pull the newest source, which can be ahead of the last release, and reinstall")
+            }
+        case .done(.available(let version)):
+            Text(verbatim: "Version \(version) is available").font(.caption)
+            Button(sourceRepo != nil ? "Update Now" : "Download") { installUpdate() }.controlSize(.small)
+        case .done(.failed):
+            Text("Couldn't reach GitHub").font(.caption).foregroundStyle(.secondary)
+            Button("Open Releases Page") { NSWorkspace.shared.open(UpdateService.releasesPage) }
+                .controlSize(.small)
+        }
+    }
+
+    /// The source checkout this build was installed from, when it still exists (see `install.sh`).
+    private var sourceRepo: String? {
+        guard let repo = Preferences.sourceRepo,
+              FileManager.default.fileExists(atPath: (repo as NSString).appendingPathComponent(".git"))
+        else { return nil }
+        return repo
+    }
+
+    /// Ask GitHub for the latest release: one request, made only because the button was clicked.
+    private func checkForUpdates() {
+        update = .checking
+        Task { update = .done(await UpdateService.check()) }
+    }
+
     /// From a source checkout: pull + reinstall in Terminal (it relaunches the new build).
-    /// Otherwise open the Releases page.
-    private func update() {
-        if let repo = Preferences.sourceRepo,
-           FileManager.default.fileExists(atPath: (repo as NSString).appendingPathComponent(".git")) {
+    /// Otherwise open the release page, where the new dmg is.
+    private func installUpdate() {
+        if let repo = sourceRepo {
             Task { await Launch.inTerminal("git pull --ff-only && zsh scripts/install.sh",
                                            cwd: repo, title: "DevCommand update") }
-        } else if let url = URL(string: "https://github.com/eno-dev/DevCommand/releases") {
-            NSWorkspace.shared.open(url)
+        } else {
+            NSWorkspace.shared.open(UpdateService.releasesPage)
         }
     }
 
