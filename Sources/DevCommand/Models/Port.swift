@@ -29,6 +29,11 @@ struct ListeningPort: Identifiable, Hashable {
     var isDev: Bool {
         devLabel != nil || PortCatalog.devCommands.contains { command.lowercased().contains($0) }
     }
+    /// Case-insensitive filter match against what the row shows: port, command and dev label.
+    /// (Not the PID: its digits collide with port numbers.)
+    func matches(_ query: String) -> Bool {
+        ["\(port)", command, devLabel ?? ""].contains { $0.localizedCaseInsensitiveContains(query) }
+    }
 }
 
 enum PortCatalog {

@@ -139,6 +139,34 @@ struct InlineBanner: View {
     }
 }
 
+/// Compact search field for a panel header: type to narrow the list below it. Clears with the
+/// ✕ button.
+struct FilterField: View {
+    let prompt: String
+    @Binding var text: String
+    var focused: FocusState<Bool>.Binding
+
+    var body: some View {
+        HStack(spacing: Theme.s4) {
+            Image(systemName: "magnifyingglass").font(.system(size: 10)).foregroundStyle(.secondary)
+            TextField(prompt, text: $text)
+                .textFieldStyle(.plain)
+                .font(.caption)
+                .focused(focused)
+            if !text.isEmpty {
+                Button { text = "" } label: {
+                    Image(systemName: "xmark.circle.fill").font(.system(size: 10)).foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("Clear filter")
+            }
+        }
+        .padding(.horizontal, Theme.s8).padding(.vertical, Theme.s4)
+        .background(Theme.chip, in: Capsule())
+        .overlay(Capsule().strokeBorder(Theme.hairline, lineWidth: 1))
+    }
+}
+
 extension View {
     /// Presents a platform-mismatch as a dialog showing the full message (no truncation),
     /// with a one-click in-app fix when a corrective command exists. `onFix`/`onCopy` fire

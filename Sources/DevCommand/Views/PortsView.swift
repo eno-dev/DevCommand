@@ -15,6 +15,13 @@ final class PortsViewModel: ObservableObject {
         hideSystem ? ports.filter { !$0.isSystem && !$0.isAppHelper } : ports
     }
 
+    /// The visible ports narrowed by the filter field (blank = all of them).
+    func visible(matching filter: String) -> [ListeningPort] {
+        let query = filter.trimmingCharacters(in: .whitespaces)
+        guard !query.isEmpty else { return visible }
+        return visible.filter { $0.matches(query) }
+    }
+
     /// Publishes only what actually changed: `@Published` fires on every set, even an identical
     /// one, so an unconditional assign would re-render the whole list on each 4s poll.
     func refresh() async {
@@ -55,9 +62,13 @@ final class PortsViewModel: ObservableObject {
 }
 
 struct PortsView: View {
+    @Binding var filter: String
     @StateObject private var vm = PortsViewModel()
     @Environment(\.controlActiveState) private var activeState
     @State private var poller: Task<Void, Never>?
+    @FocusState private var filterFocused: Bool
+
+    private var shown: [ListeningPort] { vm.visible(matching: filter) }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -79,6 +90,7 @@ struct PortsView: View {
     }
 
     private func startPolling() {
+        filterFocused = true   // so typing filters straight away, no click needed
         guard poller == nil else { return }
         poller = Task {
             await vm.refresh()
@@ -97,11 +109,11 @@ struct PortsView: View {
 
     private var header: some View {
         HStack(spacing: Theme.s8) {
-            Text(verbatim: "\(vm.visible.count) listening")
-                .font(.caption).foregroundStyle(.secondary)
-            Spacer()
+            Text(verbatim: countLabel)
+                .font(.caption).foregroundStyle(.secondary).fixedSize()
+            FilterField(prompt: "Filter", text: $filter, focused: $filterFocused)
             Toggle("Hide system", isOn: $vm.hideSystem)
-                .toggleStyle(.checkbox).font(.caption)
+                .toggleStyle(.checkbox).font(.caption).fixedSize()
             Button { Task { await vm.refresh() } } label: {
                 Image(systemName: "arrow.clockwise").font(.system(size: 11))
             }
@@ -110,17 +122,26 @@ struct PortsView: View {
         .padding(.horizontal, Theme.gutter).padding(.vertical, Theme.s8)
     }
 
+    /// "14 listening", or "3 of 14" while a filter is narrowing the list.
+    private var countLabel: String {
+        let total = vm.visible.count
+        return shown.count == total ? "\(total) listening" : "\(shown.count) of \(total)"
+    }
+
     @ViewBuilder
     private var content: some View {
+        let shown = self.shown
         if vm.isLoading {
             ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if vm.visible.isEmpty {
             EmptyStateView(icon: "bolt.horizontal.circle", title: "No listening ports")
+        } else if shown.isEmpty {
+            EmptyStateView(icon: "magnifyingglass", title: "No ports match “\(filter)”")
         } else {
             let lanIP = vm.lanIP
             ScrollView {
                 LazyVStack(spacing: 0) {
-                    ForEach(vm.visible) { port in
+                    ForEach(shown) { port in
                         PortRow(
                             port: port,
                             lanIP: lanIP,

@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+- **Type to filter** in Ports and Projects. The field is focused when the panel opens, so you
+  just start typing.
+
 ### Changed
 - DevCommand reopens on the panel you used last, and the Ports "Hide system" choice sticks.
 

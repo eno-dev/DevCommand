@@ -33,4 +33,9 @@ struct DevProject: Identifiable, Hashable {
     var isJavaScript: Bool { kind == .expo || kind == .reactNative || kind == .web }
     var usesMetro: Bool { kind == .expo || kind == .reactNative }  // supports JS reload / cache reset
     var kindLabel: String { framework ?? kind.rawValue }
+
+    /// Case-insensitive filter match against the name and the kind / framework label.
+    func matches(_ query: String) -> Bool {
+        name.localizedCaseInsensitiveContains(query) || kindLabel.localizedCaseInsensitiveContains(query)
+    }
 }

@@ -25,6 +25,8 @@ struct RootView: View {
     @Environment(\.openSettings) private var openSettings
     // Start on the panel that was open last time.
     @State private var section = Preferences.lastSection.flatMap(DeckSection.init(rawValue:)) ?? .ports
+    /// The current panel's filter text. Owned here so it resets when you switch panels.
+    @State private var filter = ""
 
     private var sections: [DeckSection] {
         settings.orderedSections().filter { settings.sectionEnabled($0) }
@@ -45,6 +47,7 @@ struct RootView: View {
         .onChange(of: settings.enabledSections) { _, _ in normalizeSection() }
         .onChange(of: section) { _, current in
             Preferences.lastSection = current.rawValue
+            filter = ""
         }
     }
 
@@ -73,9 +76,9 @@ struct RootView: View {
 
             Group {
                 switch (sections.contains(section) ? section : sections[0]) {
-                case .ports: PortsView()
+                case .ports: PortsView(filter: $filter)
                 case .sims: SimulatorsView()
-                case .projects: ProjectsView()
+                case .projects: ProjectsView(filter: $filter)
                 case .tools: ToolsView()
                 case .doctor: DoctorView()
                 }

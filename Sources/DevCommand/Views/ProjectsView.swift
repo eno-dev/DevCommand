@@ -179,10 +179,12 @@ final class ProjectsViewModel: ObservableObject {
 }
 
 struct ProjectsView: View {
+    @Binding var filter: String
     @StateObject private var vm = ProjectsViewModel()
     @ObservedObject private var settings = SettingsStore.shared   // re-sort on favorite changes
     @Environment(\.controlActiveState) private var activeState
     @State private var poller: Task<Void, Never>?
+    @FocusState private var filterFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
@@ -207,6 +209,7 @@ struct ProjectsView: View {
     }
 
     private func startPolling() {
+        filterFocused = true   // so typing filters straight away, no click needed
         guard poller == nil else { return }
         poller = Task {
             await vm.resume()
@@ -231,12 +234,8 @@ struct ProjectsView: View {
 
     private var header: some View {
         HStack(spacing: Theme.s8) {
-            Image(systemName: "folder").font(.system(size: 12)).foregroundStyle(.secondary)
-            Text(rootSummary)
-                .font(.caption).foregroundStyle(.secondary)
-                .lineLimit(1).truncationMode(.head)
+            FilterField(prompt: "Filter projects in \(rootSummary)", text: $filter, focused: $filterFocused)
                 .help(vm.devRoots.map { ($0 as NSString).abbreviatingWithTildeInPath }.joined(separator: "\n"))
-            Spacer()
             Button { pickFolder() } label: {
                 Image(systemName: "folder.badge.plus").font(.system(size: 12))
             }
@@ -257,35 +256,46 @@ struct ProjectsView: View {
             EmptyStateView(icon: "folder.badge.questionmark", title: "No projects found")
         } else {
             let lanIP = vm.lanIP
-            let favorites = vm.favoriteProjects
-            let others = vm.otherProjects
-            ScrollView {
-                LazyVStack(spacing: 0) {
-                    if !favorites.isEmpty {
-                        SectionLabel("Favorites")
-                        ForEach(favorites) { project in
-                            ProjectRow(project: project, vm: vm, lanIP: lanIP, isFavorite: true)
-                                .draggable(project.path)
-                                .dropDestination(for: String.self) { items, _ in
-                                    for path in items { vm.moveFavorite(path, before: project.path) }
-                                    return true
-                                }
-                            Divider()
-                        }
+            let query = filter.trimmingCharacters(in: .whitespaces)
+            let favorites = vm.favoriteProjects.filter { query.isEmpty || $0.matches(query) }
+            let others = vm.otherProjects.filter { query.isEmpty || $0.matches(query) }
+            let orphans = vm.orphanServers.filter { query.isEmpty || $0.matches(query) }
+            if favorites.isEmpty && others.isEmpty && orphans.isEmpty {
+                EmptyStateView(icon: "magnifyingglass", title: "No projects match “\(query)”")
+            } else {
+                projectList(favorites: favorites, orphans: orphans, others: others, lanIP: lanIP)
+            }
+        }
+    }
+
+    private func projectList(favorites: [DevProject], orphans: [ActiveBundler],
+                             others: [DevProject], lanIP: String?) -> some View {
+        ScrollView {
+            LazyVStack(spacing: 0) {
+                if !favorites.isEmpty {
+                    SectionLabel("Favorites")
+                    ForEach(favorites) { project in
+                        ProjectRow(project: project, vm: vm, lanIP: lanIP, isFavorite: true)
+                            .draggable(project.path)
+                            .dropDestination(for: String.self) { items, _ in
+                                for path in items { vm.moveFavorite(path, before: project.path) }
+                                return true
+                            }
+                        Divider()
                     }
-                    if !vm.orphanServers.isEmpty {
-                        SectionLabel("Other running servers")
-                        ForEach(vm.orphanServers) { server in
-                            OrphanServerRow(server: server, lanIP: lanIP, vm: vm)
-                            Divider()
-                        }
+                }
+                if !orphans.isEmpty {
+                    SectionLabel("Other running servers")
+                    ForEach(orphans) { server in
+                        OrphanServerRow(server: server, lanIP: lanIP, vm: vm)
+                        Divider()
                     }
-                    if !others.isEmpty {
-                        if !favorites.isEmpty || !vm.orphanServers.isEmpty { SectionLabel("Projects") }
-                        ForEach(others) { project in
-                            ProjectRow(project: project, vm: vm, lanIP: lanIP, isFavorite: false)
-                            Divider()
-                        }
+                }
+                if !others.isEmpty {
+                    if !favorites.isEmpty || !orphans.isEmpty { SectionLabel("Projects") }
+                    ForEach(others) { project in
+                        ProjectRow(project: project, vm: vm, lanIP: lanIP, isFavorite: false)
+                        Divider()
                     }
                 }
             }

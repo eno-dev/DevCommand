@@ -16,4 +16,9 @@ struct ActiveBundler: Identifiable, Hashable {
         default: return false
         }
     }
+
+    /// Case-insensitive filter match against the folder name, the server label and the port.
+    func matches(_ query: String) -> Bool {
+        [projectName, label, "\(port)"].contains { $0.localizedCaseInsensitiveContains(query) }
+    }
 }
