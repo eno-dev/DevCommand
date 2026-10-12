@@ -55,14 +55,10 @@ final class SettingsStore: ObservableObject {
         showPublicIP = Preferences.showPublicIP
 
         // Panels/tools added in a later version appear enabled by default.
-        for section in DeckSection.allCases where !sectionOrder.contains(section.rawValue) {
-            sectionOrder.append(section.rawValue)
-            enabledSections.insert(section.rawValue)
-        }
-        for tool in DevTool.allCases where !toolOrder.contains(tool.rawValue) {
-            toolOrder.append(tool.rawValue)
-            enabledTools.insert(tool.rawValue)
-        }
+        enabledSections.formUnion(allSections.filter { !sectionOrder.contains($0) })
+        enabledTools.formUnion(allTools.filter { !toolOrder.contains($0) })
+        sectionOrder = Self.reconciled(sectionOrder, defaults: allSections)
+        toolOrder = Self.reconciled(toolOrder, defaults: allTools)
         // Property observers don't fire during init, so persist the reconciliation explicitly.
         defaults.set(sectionOrder, forKey: Keys.sectionOrder)
         defaults.set(toolOrder, forKey: Keys.toolOrder)
@@ -70,7 +66,19 @@ final class SettingsStore: ObservableObject {
         defaults.set(Array(enabledTools), forKey: Keys.tools)
     }
 
-    // MARK: Order (stored ids in user order; unknown ids dropped, new ones appended)
+    /// A stored order plus any ids added since it was saved. A new id goes right after the one
+    /// that precedes it by default, so a new converter lands beside the other converters instead
+    /// of at the very end, below the maintenance actions.
+    nonisolated static func reconciled(_ stored: [String], defaults all: [String]) -> [String] {
+        var order = stored
+        for (index, id) in all.enumerated() where !order.contains(id) {
+            let anchor = index > 0 ? order.firstIndex(of: all[index - 1]) : nil
+            order.insert(id, at: index == 0 ? 0 : anchor.map { $0 + 1 } ?? order.endIndex)
+        }
+        return order
+    }
+
+    // MARK: Order (stored ids in user order; unknown ids dropped, new ones slotted in)
 
     func orderedSections() -> [DeckSection] {
         let known = sectionOrder.compactMap { DeckSection(rawValue: $0) }
