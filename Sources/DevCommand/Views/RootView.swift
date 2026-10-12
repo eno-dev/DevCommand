@@ -108,8 +108,8 @@ struct RootView: View {
             Button {
                 // Standard behavior: close the dropdown, then open Settings up front.
                 // A MenuBarExtra popover only auto-dismisses on an outside click, so we
-                // close it explicitly — it's the key window while the gear is pressed.
-                NSApp.keyWindow?.close()
+                // close it explicitly.
+                MenuBarPopover.close()
                 openSettings()
                 DispatchQueue.main.async {
                     NSApp.activate(ignoringOtherApps: true)

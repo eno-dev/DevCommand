@@ -9,6 +9,7 @@ All notable changes to this project are documented here. The format is based on
 ### Fixed
 - Simulators no longer show up under "Physical Devices" (newer Xcode versions report them
   there), which also scrambled the simulator list below.
+- After closing the popover with the gear button, the menu-bar icon needed two clicks to reopen it.
 
 ## [0.2.0] - 2026-10-11
 
