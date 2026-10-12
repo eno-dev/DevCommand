@@ -10,6 +10,7 @@ final class ProjectsViewModel: ObservableObject {
     @Published var lanIP: String?                           // computed on poll, not per render
     @Published var banner: String?
     @Published var mismatch: RunMismatch?   // platform-mismatch dialog (full message + 1-click fix)
+    @Published var git: [String: GitInfo] = [:]             // project.path -> branch + remote page
     @Published var restarting: Set<String> = []             // project paths in the middle of a restart
 
     var devRoots: [String] { SettingsStore.shared.devRoots }
@@ -21,14 +22,16 @@ final class ProjectsViewModel: ObservableObject {
         projects = await ProjectService.scan(roots: roots)
         scannedRoots = roots
         await updateRunning()
+        await refreshGit()
         isLoading = false
     }
 
     /// Poller entry point: scan the disk on first open, or when the dev folders changed since
-    /// the last scan; any other reopen just refreshes running servers.
+    /// the last scan; any other reopen just refreshes running servers and git branches.
     func resume() async {
         guard scannedRoots == SettingsStore.shared.devRoots else { return await refresh() }
         await updateRunning()
+        await refreshGit()
     }
 
     /// Rescan when the dev folders are edited (here or in Settings) while the panel exists.
@@ -39,6 +42,13 @@ final class ProjectsViewModel: ObservableObject {
     }
 
     func addRoot(_ path: String) { SettingsStore.shared.addRoot(path) }   // the view's onChange rescans
+
+    /// Branch and remote for each project, read from `.git` with no subprocess. Cheap enough to
+    /// redo on every open, so a branch switched in the terminal shows up here.
+    private func refreshGit() async {
+        let latest = await GitService.infos(forPaths: projects.map(\.path))
+        if latest != git { git = latest }
+    }
 
     /// Light refresh of just the running-server state — reuses the cached project list,
     /// so it can poll without re-hitting the filesystem. Publishes only what changed, so a poll
@@ -346,6 +356,7 @@ private struct ProjectRow: View {
     @State private var showingQR = false
 
     private var server: ActiveBundler? { vm.running[project.path] }
+    private var git: GitInfo? { vm.git[project.path] }
 
     var body: some View {
         HStack(spacing: Theme.s10) {
@@ -354,8 +365,9 @@ private struct ProjectRow: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(project.name).font(Theme.rowTitle)
                 HStack(spacing: Theme.s4) {
-                    Pill(project.kindLabel, color: .secondary)
-                    if project.supportsTV { Pill("tvOS") }
+                    Pill(project.kindLabel, color: .secondary).layoutPriority(1)
+                    if project.supportsTV { Pill("tvOS").layoutPriority(1) }
+                    if let branch = git?.branch { BranchTag(name: branch) }
                 }
             }
             Spacer(minLength: Theme.s8)
@@ -488,6 +500,9 @@ private struct ProjectRow: View {
             Button("Open in \(Preferences.editorApp)") { Task { await vm.openEditor(project) } }
             Button("Open in \(Preferences.terminalApp)") { Task { await vm.openTerminal(project) } }
             Button("Reveal in Finder") { Task { await vm.reveal(project) } }
+            if let page = git?.webURL {
+                Button("Open on \(GitService.hostLabel(for: page))") { NSWorkspace.shared.open(page) }
+            }
         } label: {
             Image(systemName: "ellipsis.circle").font(.system(size: 15)).foregroundStyle(.secondary)
         }
@@ -496,6 +511,21 @@ private struct ProjectRow: View {
         .popover(isPresented: $showingQR, arrowEdge: .bottom) {
             if let qrURL { QRPopover(url: qrURL, expoURL: qrExpoURL) }
         }
+    }
+}
+
+/// The project's current git branch, small and quiet beside its kind pill.
+private struct BranchTag: View {
+    let name: String
+
+    var body: some View {
+        HStack(spacing: 2) {
+            Image(systemName: "arrow.triangle.branch").font(.system(size: 8, weight: .semibold))
+            Text(verbatim: name).font(.system(size: 10, weight: .medium))
+                .lineLimit(1).truncationMode(.middle)
+        }
+        .foregroundStyle(.secondary)
+        .help("On branch \(name)")
     }
 }
 

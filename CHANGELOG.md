@@ -10,6 +10,8 @@ All notable changes to this project are documented here. The format is based on
 - **Type to filter** in Ports and Projects. The field is focused when the panel opens, so you
   just start typing; Esc clears it.
 - **Keyboard shortcuts** inside the popover: ⌘1 to ⌘5 switch panels, ⌘R refreshes, Esc closes.
+- **Git branch on every project row**, read straight from `.git` with no `git` subprocess, plus
+  "Open on GitHub / GitLab / Bitbucket" in the project menu.
 - **Restart** a running dev server from its row. Metro and Expo also get "Restart & Clear Cache".
 - **Simulator actions**: copy UDID, open a URL or deep link, toggle dark mode, and erase all
   content and settings (with confirmation).
