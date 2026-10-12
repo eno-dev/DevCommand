@@ -6,7 +6,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 CONFIG="${1:-release}"
 APP="DevCommand.app"
-VERSION="${DEVCOMMAND_VERSION:-0.2.0}"   # marketing version (CFBundleShortVersionString)
+VERSION="${DEVCOMMAND_VERSION:-0.3.0}"   # marketing version (CFBundleShortVersionString)
 BUILD="${DEVCOMMAND_BUILD:-1}"           # build number (CFBundleVersion); release.sh sets it from git
 # Validate before substituting into the plist below, so a stray value can't break or inject the XML.
 [[ "$VERSION" =~ '^[0-9]+(\.[0-9]+){1,2}$' ]] || { echo "✗ invalid DEVCOMMAND_VERSION: $VERSION" >&2; exit 1; }

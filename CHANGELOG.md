@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-12
+
 ### Added
 - **Type to filter** in Ports and Projects. The field is focused when the panel opens, so you
   just start typing; Esc clears it.
@@ -120,6 +122,7 @@ Initial release.
 - **Settings** window — toggle panels and tools, set dev folder + editor, launch at login.
 - Amber design system, tooltips on all controls, and polling that pauses while the panel is hidden.
 
-[Unreleased]: https://github.com/eno-dev/DevCommand/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/eno-dev/DevCommand/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/eno-dev/DevCommand/releases/tag/v0.3.0
 [0.2.0]: https://github.com/eno-dev/DevCommand/releases/tag/v0.2.0
 [0.1.0]: https://github.com/eno-dev/DevCommand/releases/tag/v0.1.0
