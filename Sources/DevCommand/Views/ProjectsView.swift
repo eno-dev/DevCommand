@@ -243,7 +243,8 @@ struct ProjectsView: View {
             Button { Task { await vm.refresh() } } label: {
                 Image(systemName: "arrow.clockwise").font(.system(size: 11))
             }
-            .buttonStyle(SubtleIconButtonStyle()).help("Rescan projects")
+            .buttonStyle(SubtleIconButtonStyle()).help("Rescan projects (⌘R)")
+            .keyboardShortcut("r", modifiers: .command)
         }
         .padding(.horizontal, Theme.gutter).padding(.vertical, Theme.s8)
     }

@@ -233,7 +233,8 @@ struct SimulatorsView: View {
             Button { Task { await vm.refresh() } } label: {
                 Image(systemName: "arrow.clockwise").font(.system(size: 11))
             }
-            .buttonStyle(SubtleIconButtonStyle()).help("Refresh simulators")
+            .buttonStyle(SubtleIconButtonStyle()).help("Refresh simulators (⌘R)")
+            .keyboardShortcut("r", modifiers: .command)
         }
         .padding(.horizontal, Theme.gutter).padding(.vertical, Theme.s8)
     }

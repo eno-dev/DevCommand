@@ -48,7 +48,8 @@ struct DoctorView: View {
             Button { Task { await vm.refresh(fresh: true) } } label: {
                 Image(systemName: "arrow.clockwise").font(.system(size: 11))
             }
-            .buttonStyle(SubtleIconButtonStyle()).help("Re-check")
+            .buttonStyle(SubtleIconButtonStyle()).help("Re-check (⌘R)")
+            .keyboardShortcut("r", modifiers: .command)
         }
         .padding(.horizontal, Theme.gutter).padding(.vertical, Theme.s8)
     }

@@ -140,7 +140,7 @@ struct InlineBanner: View {
 }
 
 /// Compact search field for a panel header: type to narrow the list below it. Clears with the
-/// ✕ button.
+/// ✕ button or Esc.
 struct FilterField: View {
     let prompt: String
     @Binding var text: String
@@ -158,7 +158,7 @@ struct FilterField: View {
                     Image(systemName: "xmark.circle.fill").font(.system(size: 10)).foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
-                .help("Clear filter")
+                .help("Clear filter (Esc)")
             }
         }
         .padding(.horizontal, Theme.s8).padding(.vertical, Theme.s4)

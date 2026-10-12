@@ -117,7 +117,8 @@ struct PortsView: View {
             Button { Task { await vm.refresh() } } label: {
                 Image(systemName: "arrow.clockwise").font(.system(size: 11))
             }
-            .buttonStyle(SubtleIconButtonStyle()).help("Refresh ports")
+            .buttonStyle(SubtleIconButtonStyle()).help("Refresh ports (⌘R)")
+            .keyboardShortcut("r", modifiers: .command)
         }
         .padding(.horizontal, Theme.gutter).padding(.vertical, Theme.s8)
     }

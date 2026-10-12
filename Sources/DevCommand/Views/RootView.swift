@@ -25,7 +25,7 @@ struct RootView: View {
     @Environment(\.openSettings) private var openSettings
     // Start on the panel that was open last time.
     @State private var section = Preferences.lastSection.flatMap(DeckSection.init(rawValue:)) ?? .ports
-    /// The current panel's filter text. Owned here so it resets when you switch panels.
+    /// The current panel's filter text. Owned here so Esc can clear it before closing the popover.
     @State private var filter = ""
 
     private var sections: [DeckSection] {
@@ -43,12 +43,31 @@ struct RootView: View {
         .frame(width: 400, height: 500)
         .background(backgroundWash)
         .tint(Theme.accent)
+        .background(shortcuts)
         .onAppear(perform: normalizeSection)
         .onChange(of: settings.enabledSections) { _, _ in normalizeSection() }
         .onChange(of: section) { _, current in
             Preferences.lastSection = current.rawValue
             filter = ""
         }
+    }
+
+    /// Invisible buttons that exist only to carry the keyboard shortcuts: ⌘1 to ⌘5 pick a panel
+    /// (in the order shown), and Esc clears an active filter, then closes the popover.
+    private var shortcuts: some View {
+        Group {
+            ForEach(Array(sections.prefix(9).enumerated()), id: \.element) { index, target in
+                Button("") { section = target }
+                    .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: .command)
+            }
+            Button("") {
+                if filter.isEmpty { MenuBarPopover.close() } else { filter = "" }
+            }
+            .keyboardShortcut(.cancelAction)
+        }
+        .opacity(0)
+        .frame(width: 0, height: 0)
+        .accessibilityHidden(true)
     }
 
     private var backgroundWash: some View {
@@ -69,6 +88,7 @@ struct RootView: View {
                 }
             }
             .pickerStyle(.segmented)
+            .help("Switch panels with ⌘1 to ⌘\(sections.count)")
             .padding(.horizontal, Theme.gutter)
             .padding(.vertical, Theme.s10)
 
