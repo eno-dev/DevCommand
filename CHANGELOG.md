@@ -10,6 +10,7 @@ All notable changes to this project are documented here. The format is based on
 - **Type to filter** in Ports and Projects. The field is focused when the panel opens, so you
   just start typing; Esc clears it.
 - **Keyboard shortcuts** inside the popover: ⌘1 to ⌘5 switch panels, ⌘R refreshes, Esc closes.
+- **Restart** a running dev server from its row. Metro and Expo also get "Restart & Clear Cache".
 - **Simulator actions**: copy UDID, open a URL or deep link, toggle dark mode, and erase all
   content and settings (with confirmation).
 - Copying from the Ports menu confirms with a brief toast.

@@ -10,6 +10,7 @@ final class ProjectsViewModel: ObservableObject {
     @Published var lanIP: String?                           // computed on poll, not per render
     @Published var banner: String?
     @Published var mismatch: RunMismatch?   // platform-mismatch dialog (full message + 1-click fix)
+    @Published var restarting: Set<String> = []             // project paths in the middle of a restart
 
     var devRoots: [String] { SettingsStore.shared.devRoots }
     /// The folders the current list was scanned from; nil until the first scan finishes.
@@ -92,6 +93,22 @@ final class ProjectsViewModel: ObservableObject {
     func stopServer(_ server: ActiveBundler) async {
         let result = await BundlerService.stop(pid: server.pid)
         if !result.ok { report("Couldn't stop \(server.label) on \(server.port): \(result.briefError)") }
+        await updateRunning()
+    }
+
+    /// Stop the project's dev server, wait until it has really exited (so its port is free),
+    /// then start it again. With `clear`, Metro / Expo come back with a cleared cache.
+    func restartServer(_ project: DevProject, clear: Bool) async {
+        guard let server = running[project.path], !restarting.contains(project.path) else { return }
+        restarting.insert(project.path)
+        defer { restarting.remove(project.path) }
+        let stopped = await BundlerService.stop(pid: server.pid)
+        guard stopped.ok, await BundlerService.waitForExit(pid: server.pid) else {
+            report("Couldn't restart \(project.name): the server on \(server.port) didn't stop")
+            await updateRunning()
+            return
+        }
+        await BundlerService.start(project, clear: clear)
         await updateRunning()
     }
 
@@ -375,7 +392,34 @@ private struct ProjectRow: View {
         }
         .buttonStyle(.plain)
         .help("Running — open http://localhost:\(server.port)")
-        Button("Stop", role: .destructive) { Task { await vm.stopServer(server) } }.controlSize(.small)
+        if vm.restarting.contains(project.path) {
+            ProgressView().controlSize(.small)
+        } else {
+            restartControl
+            Button("Stop", role: .destructive) { Task { await vm.stopServer(server) } }.controlSize(.small)
+        }
+    }
+
+    /// Restart the running server. Metro / Expo also offer a cache-clearing restart, so they get
+    /// a two-item menu (the same shape as the simulator's reload menu); other servers a plain button.
+    @ViewBuilder
+    private var restartControl: some View {
+        if project.usesMetro {
+            Menu {
+                Button("Restart") { Task { await vm.restartServer(project, clear: false) } }
+                Button("Restart & Clear Cache") { Task { await vm.restartServer(project, clear: true) } }
+            } label: {
+                Image(systemName: "arrow.clockwise").font(.system(size: 12)).foregroundStyle(.secondary)
+            }
+            .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+            .help("Restart the dev server")
+        } else {
+            Button { Task { await vm.restartServer(project, clear: false) } } label: {
+                Image(systemName: "arrow.clockwise").font(.system(size: 11))
+            }
+            .buttonStyle(SubtleIconButtonStyle())
+            .help("Restart the dev server")
+        }
     }
 
     /// LAN QR target for the running server, or nil when there's no server / LAN IP.

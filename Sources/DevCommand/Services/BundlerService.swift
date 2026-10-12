@@ -71,4 +71,20 @@ enum BundlerService {
     static func stop(pid: Int, force: Bool = false) async -> ShellResult {
         await PortService.kill(pid: pid, force: force)
     }
+
+    /// Wait up to `timeout` for a process to be gone, so a restart doesn't race the old server
+    /// for its port. Signal 0 only asks whether the pid exists, so the wait spawns nothing.
+    static func waitForExit(pid: Int, timeout: TimeInterval = 5) async -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while isAlive(pid) {
+            if Date() >= deadline { return false }
+            try? await Task.sleep(for: .milliseconds(150))
+        }
+        return true
+    }
+
+    /// EPERM means the pid exists but belongs to someone else, which still counts as alive.
+    static func isAlive(_ pid: Int) -> Bool {
+        Darwin.kill(pid_t(pid), 0) == 0 || errno == EPERM
+    }
 }
