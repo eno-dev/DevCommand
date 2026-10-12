@@ -29,10 +29,18 @@ struct ListeningPort: Identifiable, Hashable {
     var isDev: Bool {
         devLabel != nil || PortCatalog.devCommands.contains { command.lowercased().contains($0) }
     }
-    /// Case-insensitive filter match against what the row shows: port, command and dev label.
-    /// (Not the PID: its digits collide with port numbers.)
-    func matches(_ query: String) -> Bool {
-        ["\(port)", command, devLabel ?? ""].contains { $0.localizedCaseInsensitiveContains(query) }
+    /// A language runtime that was most likely started from a project folder, so its working
+    /// directory names the project it belongs to.
+    var hostsProject: Bool {
+        let name = command.lowercased()
+        return PortCatalog.projectRuntimes.contains { name.contains($0) }
+    }
+
+    /// Case-insensitive filter match against what the row shows: port, command, dev label, and
+    /// the owning project when known. (Not the PID: its digits collide with port numbers.)
+    func matches(_ query: String, owner: String? = nil) -> Bool {
+        ["\(port)", command, devLabel ?? "", owner ?? ""]
+            .contains { $0.localizedCaseInsensitiveContains(query) }
     }
 }
 
@@ -49,6 +57,16 @@ enum PortCatalog {
         "ruby", "rails", "python", "php", "java", "gradle",
         "postgres", "mongod", "redis", "docker", "watchman"
     ]
+
+    /// Runtimes whose listening processes are worth resolving to a project folder.
+    static let projectRuntimes: [String] = ["node", "bun", "deno", "python", "ruby", "php", "java"]
+
+    /// The folder name to show as a process's project, or nil when its working directory says
+    /// nothing useful (unknown, the filesystem root, or the home folder itself).
+    static func projectName(forCwd cwd: String, home: String = NSHomeDirectory()) -> String? {
+        guard !cwd.isEmpty, cwd != "/", cwd != home else { return nil }
+        return (cwd as NSString).lastPathComponent
+    }
 
     /// Friendly label for well-known development ports.
     static func devLabel(forPort port: Int) -> String? {

@@ -1,7 +1,7 @@
 import XCTest
 @testable import DevCommand
 
-/// The type-to-filter matching used by the Ports and Projects panels.
+/// The type-to-filter matching used by the Ports and Projects panels, and the port-owner naming.
 final class FilterTests: XCTestCase {
     private func port(_ number: Int, pid: Int = 100, command: String = "node") -> ListeningPort {
         ListeningPort(port: number, pid: pid, command: command, user: "me", address: "*")
@@ -13,11 +13,13 @@ final class FilterTests: XCTestCase {
                    packageManager: .npm, scripts: [])
     }
 
-    func testPortMatchesNumberCommandAndLabel() {
+    func testPortMatchesNumberCommandLabelAndOwner() {
         let metro = port(8081)
         XCTAssertTrue(metro.matches("808"))
         XCTAssertTrue(metro.matches("NODE"))                     // case-insensitive
         XCTAssertTrue(metro.matches("metro"))                    // the dev label for 8081
+        XCTAssertTrue(metro.matches("shop", owner: "shop-app"))
+        XCTAssertFalse(metro.matches("shop"))                    // no owner known
         XCTAssertFalse(metro.matches("postgres"))
     }
 
@@ -25,6 +27,23 @@ final class FilterTests: XCTestCase {
     /// pid 18012), which makes a port search noisy.
     func testPortFilterIgnoresPID() {
         XCTAssertFalse(port(3000, pid: 8081).matches("8081"))
+    }
+
+    func testHostsProjectOnlyForLanguageRuntimes() {
+        XCTAssertTrue(port(3000, command: "node").hostsProject)
+        XCTAssertTrue(port(8000, command: "Python").hostsProject)
+        XCTAssertTrue(port(3000, command: "bun").hostsProject)
+        XCTAssertFalse(port(5432, command: "postgres").hostsProject)
+        XCTAssertFalse(port(27017, command: "mongod").hostsProject)
+        XCTAssertFalse(port(7000, command: "ControlCe").hostsProject)
+    }
+
+    func testProjectNameForCwd() {
+        XCTAssertEqual(PortCatalog.projectName(forCwd: "/Users/me/Dev/shop-app", home: "/Users/me"), "shop-app")
+        XCTAssertEqual(PortCatalog.projectName(forCwd: "/Users/me/Dev/mono/apps/web", home: "/Users/me"), "web")
+        XCTAssertNil(PortCatalog.projectName(forCwd: "", home: "/Users/me"))
+        XCTAssertNil(PortCatalog.projectName(forCwd: "/", home: "/Users/me"))
+        XCTAssertNil(PortCatalog.projectName(forCwd: "/Users/me", home: "/Users/me"))   // a daemon run from ~
     }
 
     func testProjectMatchesNameAndKindLabel() {

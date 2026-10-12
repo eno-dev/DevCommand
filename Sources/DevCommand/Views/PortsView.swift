@@ -10,7 +10,12 @@ final class PortsViewModel: ObservableObject {
     }
     @Published var lanIP: String?
     @Published var banner: String?
+    @Published var owners: [Int: String] = [:]   // pid -> the project folder it was started from
     @Published var copied: String?               // what was just copied, for the confirmation toast
+
+    /// Working directories already looked up, by pid ("" = looked up, nothing usable). A
+    /// process's cwd doesn't move, so each pid costs one lookup for its whole life, not one per poll.
+    private var cwdByPID: [Int: String] = [:]
 
     var visible: [ListeningPort] {
         hideSystem ? ports.filter { !$0.isSystem && !$0.isAppHelper } : ports
@@ -20,7 +25,7 @@ final class PortsViewModel: ObservableObject {
     func visible(matching filter: String) -> [ListeningPort] {
         let query = filter.trimmingCharacters(in: .whitespaces)
         guard !query.isEmpty else { return visible }
-        return visible.filter { $0.matches(query) }
+        return visible.filter { $0.matches(query, owner: owners[$0.pid]) }
     }
 
     /// Publishes only what actually changed: `@Published` fires on every set, even an identical
@@ -32,6 +37,21 @@ final class PortsViewModel: ObservableObject {
         let latest = await PortService.listening()
         if latest != ports { ports = latest }
         if isLoading { isLoading = false }
+        await resolveOwners(for: latest)
+    }
+
+    /// Name the project behind each runtime process (node, bun, python…) from its working
+    /// directory. Only pids not seen before are looked up, in a single `lsof`.
+    private func resolveOwners(for ports: [ListeningPort]) async {
+        let pids = Set(ports.filter(\.hostsProject).map(\.pid))
+        cwdByPID = cwdByPID.filter { pids.contains($0.key) }   // forget processes that are gone
+        let unseen = pids.subtracting(cwdByPID.keys)
+        if !unseen.isEmpty {
+            let found = await BundlerService.cwds(ofPIDs: Array(unseen))
+            for pid in unseen { cwdByPID[pid] = found[pid] ?? "" }
+        }
+        let latest = cwdByPID.compactMapValues { PortCatalog.projectName(forCwd: $0) }
+        if latest != owners { owners = latest }
     }
 
     func kill(_ port: ListeningPort, force: Bool) async {
@@ -152,6 +172,7 @@ struct PortsView: View {
                     ForEach(shown) { port in
                         PortRow(
                             port: port,
+                            owner: vm.owners[port.pid],
                             lanIP: lanIP,
                             onCopy: { vm.copy($0) },
                             onOpen: { vm.openInBrowser($0) },
@@ -167,12 +188,19 @@ struct PortsView: View {
 
 private struct PortRow: View {
     let port: ListeningPort
+    let owner: String?
     let lanIP: String?
     let onCopy: (String) -> Void
     let onOpen: (String) -> Void
     let onKill: (Bool) -> Void
 
     @State private var hovering = false
+
+    /// "node  ·  my-app  ·  PID 123  ·  *": the project is named when the process has one.
+    private var subtitle: String {
+        ([port.command] + (owner.map { [$0] } ?? []) + ["PID \(port.pid)", port.address])
+            .joined(separator: "  ·  ")
+    }
 
     private var localURL: String { "http://localhost:\(port.port)" }
     // A loopback-only port isn't reachable from a phone, so don't offer a LAN URL/QR for it.
@@ -196,7 +224,7 @@ private struct PortRow: View {
                         Pill(label, color: port.isStorybook ? Theme.storybook : Theme.accent)
                     }
                 }
-                Text(verbatim: "\(port.command)  ·  PID \(port.pid)  ·  \(port.address)")
+                Text(verbatim: subtitle)
                     .font(Theme.rowSubtitle).foregroundStyle(.secondary)
                     .lineLimit(1).truncationMode(.middle)
             }
