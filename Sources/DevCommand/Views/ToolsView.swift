@@ -70,7 +70,7 @@ struct ToolsView: View {
         switch tool {
         case .uuid, .secret: GenerateRow(tool: tool, vm: vm)
         case .timestamp: TimestampRow(vm: vm)
-        case .base64, .jwt: ConvertRow(tool: tool, vm: vm)
+        case .base64, .urlEncode, .jwt, .sha256, .json: ConvertRow(tool: tool, vm: vm)
         case .derivedData, .watchman, .npmCache, .killNode: MaintenanceRow(tool: tool, vm: vm)
         }
     }
@@ -125,30 +125,69 @@ private struct TimestampRow: View {
     @State private var seconds = ""
     @State private var millis = ""
     @State private var hovering = false
+    @State private var converting = false
+    @State private var input = ""
 
     var body: some View {
-        HStack(spacing: Theme.s10) {
-            Image(systemName: "clock").frame(width: 20).foregroundStyle(.secondary)
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Unix timestamp").font(Theme.rowTitle)
-                HStack(spacing: Theme.s6) {
-                    chip(label: "s", value: seconds, key: "ts-s")
-                    chip(label: "ms", value: millis, key: "ts-ms")
+        VStack(alignment: .leading, spacing: Theme.s6) {
+            HStack(spacing: Theme.s10) {
+                Image(systemName: "clock").frame(width: 20).foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Unix timestamp").font(Theme.rowTitle)
+                    HStack(spacing: Theme.s6) {
+                        chip(label: "s", value: seconds, key: "ts-s")
+                        chip(label: "ms", value: millis, key: "ts-ms")
+                    }
                 }
+                Spacer(minLength: Theme.s8)
+                Button("Convert") { converting.toggle() }
+                    .controlSize(.small)
+                    .help("Turn a pasted timestamp into a date")
+                Button("Now") {
+                    let now = ToolsService.epochNow()
+                    seconds = now.seconds
+                    millis = now.millis
+                }
+                .controlSize(.small)
             }
-            Spacer(minLength: Theme.s8)
-            Button("Now") {
-                let now = ToolsService.epochNow()
-                seconds = now.seconds
-                millis = now.millis
-            }
-            .controlSize(.small)
+            if converting { converter }
         }
         .rowInsets()
         .background(hovering ? Theme.rowHover : Color.clear)
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
         .animation(.easeOut(duration: 0.12), value: hovering)
+    }
+
+    /// Paste an epoch (seconds, ms, µs or ns) and read it back as a date; click a line to copy it.
+    @ViewBuilder
+    private var converter: some View {
+        let converted = ToolsService.describeEpoch(input)
+        VStack(alignment: .leading, spacing: Theme.s4) {
+            TextField("Paste a timestamp…", text: $input)
+                .textFieldStyle(.roundedBorder)
+                .font(Theme.mono(11))
+            if let converted {
+                dateLine(converted.local, key: "ts-local")
+                dateLine(converted.utc, key: "ts-utc")
+            } else if !input.trimmingCharacters(in: .whitespaces).isEmpty {
+                Text("⚠︎ not a timestamp").font(Theme.mono(10)).foregroundStyle(.secondary)
+            }
+        }
+        .padding(.leading, 20 + Theme.s10)   // line up under the title, past the icon
+    }
+
+    private func dateLine(_ value: String, key: String) -> some View {
+        Button { vm.copy(value, key: key) } label: {
+            HStack(spacing: Theme.s4) {
+                Text(verbatim: value).font(Theme.mono(11))
+                Image(systemName: vm.copiedKey == key ? "checkmark" : "doc.on.doc")
+                    .font(.system(size: 9))
+                    .foregroundStyle(vm.copiedKey == key ? Color.green : Color.secondary)
+            }
+        }
+        .buttonStyle(.plain)
+        .help("Copy")
     }
 
     @ViewBuilder
@@ -184,26 +223,42 @@ private struct ConvertRow: View {
         case .base64:
             return decodeMode ? (ToolsService.base64Decode(input) ?? "⚠︎ invalid base64")
                               : ToolsService.base64Encode(input)
+        case .urlEncode:
+            return decodeMode ? (ToolsService.urlDecode(input) ?? "⚠︎ invalid percent-encoding")
+                              : ToolsService.urlEncode(input)
         case .jwt:
             return ToolsService.decodeJWT(input) ?? "⚠︎ invalid JWT"
+        case .sha256:
+            return ToolsService.sha256(input)
+        case .json:
+            return ToolsService.prettyJSON(input) ?? "⚠︎ invalid JSON"
         default:
             return ""
+        }
+    }
+
+    private var placeholder: String {
+        switch tool {
+        case .jwt: return "Paste JWT…"
+        case .json: return "Paste JSON…"
+        default: return "Text…"
         }
     }
 
     var body: some View {
         DisclosureGroup(isExpanded: $expanded) {
             VStack(alignment: .leading, spacing: Theme.s6) {
-                if tool == .base64 {
+                let output = self.output   // computed once per render (it hashes / parses the input)
+                if tool.hasDecodeMode {
                     Picker("", selection: $decodeMode) {
                         Text("Encode").tag(false)
                         Text("Decode").tag(true)
                     }
                     .pickerStyle(.segmented).labelsHidden()
                 }
-                TextField(tool == .jwt ? "Paste JWT…" : "Text…", text: $input, axis: .vertical)
+                TextField(placeholder, text: $input, axis: .vertical)
                     .textFieldStyle(.roundedBorder)
-                    .lineLimit(1...3)
+                    .lineLimit(1...(tool == .json ? 6 : 3))
                     .font(Theme.mono(11))
                 if !output.isEmpty {
                     ScrollView {

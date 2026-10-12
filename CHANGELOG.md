@@ -13,6 +13,8 @@ All notable changes to this project are documented here. The format is based on
 - **Restart** a running dev server from its row. Metro and Expo also get "Restart & Clear Cache".
 - **Simulator actions**: copy UDID, open a URL or deep link, toggle dark mode, and erase all
   content and settings (with confirmation).
+- **More tools**: URL encode / decode, SHA-256, JSON pretty-print, and a converter that turns a
+  pasted Unix timestamp into a date.
 - Copying from the Ports menu confirms with a brief toast.
 
 ### Changed

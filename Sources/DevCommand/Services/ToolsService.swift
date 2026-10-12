@@ -1,4 +1,5 @@
 import Foundation
+import CryptoKit
 
 enum ToolsService {
 
@@ -18,6 +19,35 @@ enum ToolsService {
         return Data(bytes).base64EncodedString()
     }
 
+    /// Read a Unix timestamp and render it as UTC ISO 8601 plus the local date and time. The unit
+    /// (seconds, milliseconds, microseconds or nanoseconds) is picked from the magnitude, since
+    /// that is how these numbers show up in logs and APIs.
+    static func describeEpoch(_ text: String, timeZone: TimeZone = .current,
+                              locale: Locale = .current) -> (utc: String, local: String)? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Plain decimal only: Double() alone would also accept "inf", "nan", hex and exponents.
+        guard !trimmed.isEmpty,
+              trimmed.allSatisfy({ ($0.isASCII && $0.isNumber) || $0 == "." || $0 == "-" }),
+              let value = Double(trimmed) else { return nil }
+        let seconds: Double
+        switch abs(value) {
+        case ..<1e11: seconds = value
+        case ..<1e14: seconds = value / 1e3
+        case ..<1e17: seconds = value / 1e6
+        default: seconds = value / 1e9
+        }
+        let date = Date(timeIntervalSince1970: seconds)
+
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime]
+        let localFormatter = DateFormatter()
+        localFormatter.dateStyle = .medium
+        localFormatter.timeStyle = .long
+        localFormatter.timeZone = timeZone
+        localFormatter.locale = locale
+        return (iso.string(from: date), localFormatter.string(from: date))
+    }
+
     // MARK: Converters
 
     static func base64Encode(_ text: String) -> String {
@@ -35,6 +65,34 @@ enum ToolsService {
         while url.count % 4 != 0 { url += "=" }
         guard let data = Data(base64Encoded: url) else { return nil }
         return String(data: data, encoding: .utf8)
+    }
+
+    /// Characters `encodeURIComponent` leaves alone; everything else gets percent-encoded.
+    private static let urlUnreserved = CharacterSet(
+        charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
+
+    /// Percent-encode text so it is safe as a single URL component (a query value, a path segment).
+    static func urlEncode(_ text: String) -> String {
+        text.addingPercentEncoding(withAllowedCharacters: urlUnreserved) ?? text
+    }
+
+    /// Reverse percent-encoding. nil when the input has a malformed escape.
+    static func urlDecode(_ text: String) -> String? {
+        text.trimmingCharacters(in: .whitespacesAndNewlines).removingPercentEncoding
+    }
+
+    /// SHA-256 of the text's UTF-8 bytes, as lowercase hex.
+    static func sha256(_ text: String) -> String {
+        SHA256.hash(data: Data(text.utf8)).map { String(format: "%02x", $0) }.joined()
+    }
+
+    /// Re-indent a JSON object or array with sorted keys. nil when the input is not valid JSON.
+    static func prettyJSON(_ text: String) -> String? {
+        guard let object = try? JSONSerialization.jsonObject(with: Data(text.utf8)),
+              let pretty = try? JSONSerialization.data(
+                withJSONObject: object, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
+        else { return nil }
+        return String(decoding: pretty, as: UTF8.self)
     }
 
     /// Decode a JWT's header + payload (base64url) into pretty JSON. Does not verify the signature.

@@ -9,7 +9,7 @@ enum DevToolCategory: String, Hashable {
 /// Small, reach-for utilities surfaced in the Tools panel.
 enum DevTool: String, CaseIterable, Identifiable {
     case uuid, timestamp, secret        // generate
-    case base64, jwt                    // convert
+    case base64, urlEncode, jwt, sha256, json   // convert
     case derivedData, watchman, npmCache, killNode   // maintenance
 
     var id: String { rawValue }
@@ -17,7 +17,7 @@ enum DevTool: String, CaseIterable, Identifiable {
     var category: DevToolCategory {
         switch self {
         case .uuid, .timestamp, .secret: return .generate
-        case .base64, .jwt: return .convert
+        case .base64, .urlEncode, .jwt, .sha256, .json: return .convert
         case .derivedData, .watchman, .npmCache, .killNode: return .maintain
         }
     }
@@ -28,7 +28,10 @@ enum DevTool: String, CaseIterable, Identifiable {
         case .timestamp: return "Unix timestamp"
         case .secret: return "Secret token"
         case .base64: return "Base64"
+        case .urlEncode: return "URL encode"
         case .jwt: return "JWT decode"
+        case .sha256: return "SHA-256"
+        case .json: return "JSON format"
         case .derivedData: return "Clear DerivedData"
         case .watchman: return "Reset Watchman"
         case .npmCache: return "Clean npm cache"
@@ -42,7 +45,10 @@ enum DevTool: String, CaseIterable, Identifiable {
         case .timestamp: return "Current epoch — seconds / ms"
         case .secret: return "32 random bytes, base64 (JWT secrets, keys)"
         case .base64: return "Encode / decode text"
+        case .urlEncode: return "Percent-encode / decode text"
         case .jwt: return "Header + payload (no signature check)"
+        case .sha256: return "Hex digest of any text"
+        case .json: return "Pretty-print and validate"
         case .derivedData: return "rm -rf ~/…/Xcode/DerivedData"
         case .watchman: return "watchman watch-del-all"
         case .npmCache: return "npm cache clean --force"
@@ -56,7 +62,10 @@ enum DevTool: String, CaseIterable, Identifiable {
         case .timestamp: return "clock"
         case .secret: return "key.horizontal"
         case .base64: return "textformat"
+        case .urlEncode: return "link"
         case .jwt: return "rectangle.split.3x1"
+        case .sha256: return "number.square"
+        case .json: return "curlybraces"
         case .derivedData: return "trash"
         case .watchman: return "eye.trianglebadge.exclamationmark"
         case .npmCache: return "shippingbox"
@@ -65,4 +74,7 @@ enum DevTool: String, CaseIterable, Identifiable {
     }
 
     var isDestructive: Bool { self == .derivedData || self == .killNode }
+
+    /// Converters that run both ways get an Encode / Decode switch.
+    var hasDecodeMode: Bool { self == .base64 || self == .urlEncode }
 }
