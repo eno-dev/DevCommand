@@ -9,6 +9,8 @@ enum Preferences {
     private static let showPublicIPKey = "showPublicIP"
     private static let favoritesKey = "favoriteProjects"
     private static let sourceRepoKey = "sourceRepo"
+    private static let lastSectionKey = "lastSection"
+    private static let hideSystemPortsKey = "hideSystemPorts"
 
     /// Folders scanned for projects (default: [~/Dev]). Order preserved, duplicates dropped.
     static var devRoots: [String] {
@@ -54,6 +56,18 @@ enum Preferences {
     static var favoriteProjects: [String] {
         get { UserDefaults.standard.stringArray(forKey: favoritesKey) ?? [] }
         set { UserDefaults.standard.set(newValue, forKey: favoritesKey) }
+    }
+
+    /// The panel that was open last (a raw `DeckSection` value), so a relaunch lands where you left off.
+    static var lastSection: String? {
+        get { UserDefaults.standard.string(forKey: lastSectionKey) }
+        set { UserDefaults.standard.set(newValue, forKey: lastSectionKey) }
+    }
+
+    /// Whether the Ports panel hides system daemons and editor helpers (default: on).
+    static var hideSystemPorts: Bool {
+        get { UserDefaults.standard.object(forKey: hideSystemPortsKey) as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: hideSystemPortsKey) }
     }
 
     /// Absolute path of the source checkout DevCommand was built from — written by `install.sh`

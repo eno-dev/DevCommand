@@ -23,7 +23,8 @@ enum DeckSection: String, CaseIterable, Identifiable {
 struct RootView: View {
     @ObservedObject private var settings = SettingsStore.shared
     @Environment(\.openSettings) private var openSettings
-    @State private var section: DeckSection = .ports
+    // Start on the panel that was open last time.
+    @State private var section = Preferences.lastSection.flatMap(DeckSection.init(rawValue:)) ?? .ports
 
     private var sections: [DeckSection] {
         settings.orderedSections().filter { settings.sectionEnabled($0) }
@@ -42,6 +43,9 @@ struct RootView: View {
         .tint(Theme.accent)
         .onAppear(perform: normalizeSection)
         .onChange(of: settings.enabledSections) { _, _ in normalizeSection() }
+        .onChange(of: section) { _, current in
+            Preferences.lastSection = current.rawValue
+        }
     }
 
     private var backgroundWash: some View {

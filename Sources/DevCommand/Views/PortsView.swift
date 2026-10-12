@@ -5,7 +5,9 @@ import AppKit
 final class PortsViewModel: ObservableObject {
     @Published var ports: [ListeningPort] = []
     @Published var isLoading = false
-    @Published var hideSystem = true
+    @Published var hideSystem = Preferences.hideSystemPorts {
+        didSet { Preferences.hideSystemPorts = hideSystem }
+    }
     @Published var lanIP: String?
     @Published var banner: String?
 
