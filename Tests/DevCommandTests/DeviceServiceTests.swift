@@ -77,4 +77,27 @@ final class DeviceServiceTests: XCTestCase {
         XCTAssertFalse(device?.passesExpoFilter ?? true)   // …but not paired → Expo drops it
         XCTAssertFalse(device?.isRunnable ?? true)
     }
+
+    /// Xcode 26's devicectl reports simulators alongside real devices. They must not show up
+    /// under "Physical Devices" (their rows belong to the simulator list, with the same UDID).
+    func testSimulatorsAreNotListedAsPhysicalDevices() {
+        let mixed = """
+        {"result":{"devices":[
+          {"identifier":"SIM-UDID",
+           "connectionProperties":{"pairingState":"paired","tunnelState":"connected","transportType":"sameMachine"},
+           "deviceProperties":{"name":"iPhone 17 Pro Max","osVersionNumber":"26.5"},
+           "hardwareProperties":{"udid":"SIM-UDID","platform":"iOS","deviceType":"iPhone","reality":"simulated"}},
+          {"identifier":"id-tv",
+           "connectionProperties":{"pairingState":"paired","tunnelState":"disconnected","transportType":"localNetwork"},
+           "deviceProperties":{"name":"Living Room","osVersionNumber":"27.0"},
+           "hardwareProperties":{"udid":"TV-UDID","platform":"tvOS","deviceType":"appleTV","reality":"physical"}},
+          {"identifier":"id-phone",
+           "connectionProperties":{"pairingState":"paired","tunnelState":"disconnected","transportType":"localNetwork"},
+           "deviceProperties":{"name":"Eno's iPhone","osVersionNumber":"26.6.1"},
+           "hardwareProperties":{"udid":"PHONE-UDID","platform":"iOS","deviceType":"iPhone"}}
+        ]}}
+        """
+        let devices = DeviceService.parse(Data(mixed.utf8))
+        XCTAssertEqual(devices.map(\.name), ["Eno's iPhone", "Living Room"])   // no "reality" field still counts as real
+    }
 }

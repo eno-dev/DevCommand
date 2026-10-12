@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Fixed
+- Simulators no longer show up under "Physical Devices" (newer Xcode versions report them
+  there), which also scrambled the simulator list below.
+
 ## [0.2.0] - 2026-10-11
 
 ### Added

@@ -41,13 +41,17 @@ enum DeviceService {
             let platform: String?
             let deviceType: String?
             let marketingName: String?
+            let reality: String?      // "physical" or "simulated" (absent on older devices)
         }
     }
 
     static func parse(_ data: Data) -> [PhysicalDevice] {
         guard let root = try? JSONDecoder().decode(Output.self, from: data) else { return [] }
 
-        let devices = root.result.devices.map { dto -> PhysicalDevice in
+        // Newer Xcode versions list simulators here too. They belong to the simulator section (and
+        // share their UDID with the entry there), so keep only real hardware.
+        let hardware = root.result.devices.filter { $0.hardwareProperties?.reality != "simulated" }
+        let devices = hardware.map { dto -> PhysicalDevice in
             let hw = dto.hardwareProperties
             let conn = dto.connectionProperties
             // Carry the raw CoreDevice states through; `PhysicalDevice` derives connectivity
